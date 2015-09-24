@@ -1,0 +1,30 @@
+mkdir vbcc
+dircp 9fiction vbcc
+cd vbcc
+pcc -o /386/bin/zrip zrip.c
+buildglulxe
+cp glulxe/glulxe /386/bin/glulxe
+cd ztools
+../9ztools
+cd ..
+cd frotz-2.44
+ape/patch -p1 <../frotz9.patch
+mk
+cp 8.out /386/bin/frotz
+cd ../inform
+mk
+cp 8.out /386/bin/inform
+cd ../vbcc-0.7.orig
+ape/patch -p1 <../vbcc9.patch
+mkdir bin
+ape/make all
+cp bin/vc /386/bin/vbcw
+cd ..
+cp vbcc-0.7.orig/i386 castles-1.1
+bind -ac informlibs castles-1.1
+cd castles-1.1
+../buildlibc
+cp ../zlibc.inf libc/zlibc.inf
+vbcw -Ilibc/include -Ic '-module-name=permute' -c ../code/permute.c
+inform /usr/glenda/vbcc/code/permutec.inf /usr/glenda/vbcc/zmachines/permute.inf
+frotz ../zmachines/permute.inf

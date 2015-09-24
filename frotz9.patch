@@ -1,0 +1,23 @@
+--- cleancopy/frotz-2.44/mkfile	Thu Jan  1 00:00:00 1970
++++ frotz-2.44/mkfile	Sat Sep 19 19:59:01 2015
+@@ -0,0 +1,8 @@
++all:
++   pcc -c src/common/*.c
++   pcc -c src/dumb/*.c
++   pcc -v *.8
++
++clean:
++   rm *.out
++   rm *.8
+diff -Naur cleancopy/frotz-2.44/src/common/frotz.h frotz-2.44/src/common/frotz.h
+--- cleancopy/frotz-2.44/src/common/frotz.h	Sat Sep 19 19:59:37 2015
++++ frotz-2.44/src/common/frotz.h	Sat Sep 19 19:58:47 2015
+@@ -52,7 +52,7 @@
+ #endif
+ */
+ 
+-typedef unsigned char zchar;
++typedef char zchar;
+ 
+ enum story {
+     BEYOND_ZORK,

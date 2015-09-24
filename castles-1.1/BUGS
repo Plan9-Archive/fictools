@@ -1,0 +1,13 @@
+The following patches are required:
+
+Inform
+------
+
+Branch overflow warning is recommended.
+Constant folding bug fix.
+
+Nitfol
+------
+
+Signed comparison bug fix.
+

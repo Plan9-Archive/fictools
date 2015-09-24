@@ -1,0 +1,447 @@
+[ _show xp
+	r0
+	r1
+	r2
+	r3
+	r4
+	r5
+;
+	@sub xp 0+6 -> xp;
+	r3 = r0;
+	r2 = r1;
+	@add 0+0 0+0 -> sp;
+	@storew xp 0+2 sp;
+	jump L3;
+.L2;
+	@sub r2 0+1 -> r0;
+	@loadw xp 0+2 -> sp;
+	@je sp r0 ?~L7;
+.L6;
+	@add 0+10 0+0 -> r0;
+	jump L8;
+.L7;
+	@add 0+32 0+0 -> r0;
+.L8;
+	@sub xp 0+2 -> xp;
+	@storew xp 0 r0;
+	@loadw xp 0+3 -> sp;
+	@mul sp 0+2 -> r0;
+	@add r3 r0 -> r1;
+	@sub xp 0+2 -> xp;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@storew xp 0 sp;
+	@add STATIC_permute_9 0+0 -> sp;
+	@pull r0;
+	@call_vs2 _printf xp r0 r1 r2 r3 r4 r5 -> r0;
+	@add xp 0+4 -> xp;
+	r1 = r0;
+.L5;
+	@loadw xp 0+2 -> sp;
+	@add sp 0+1 -> sp;
+	@storew xp 0+2 sp;
+.L3;
+	@loadw xp 0+2 -> sp;
+	@jl sp r2 ?L2;
+.L4;
+	@add 0+1 0+0 -> r0;
+.L1;
+	@ret r0;
+]
+;
+Array STATIC_permute_9 ->
+ (37)
+ (100)
+ (37)
+ (99)
+ (0)
+;[ _next_lex_perm xp
+	r0
+	r1
+	r2
+	r3
+	r4
+	r5
+	r6
+	r7
+;
+	@sub xp 0+10 -> xp;
+	r5 = r0;
+	r7 = r1;
+	@sub r7 0+1 -> r3;
+	jump L12;
+.L11;
+.L14;
+	@sub r3 0+1 -> r3;
+.L12;
+	@je r3 0+0 ?L13;
+.L15;
+	@sub r3 0+1 -> r0;
+	@mul r0 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@mul r3 0+2 -> r0;
+	@add r5 r0 -> r2;
+	@push r2;
+	@loadw sp 0 -> sp;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@jl sp sp ?~L11;
+.L13;
+	r0 = r3;
+	@sub r3 0+1 -> r3;
+	@je r0 0+0 ?~L17;
+.L16;
+	@add 0+0 0+0 -> r0;
+	jump L10;
+.L17;
+	@sub r7 0+1 -> r4;
+	jump L19;
+.L18;
+.L21;
+	@sub r4 0+1 -> r4;
+.L19;
+	@mul r4 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@mul r3 0+2 -> r0;
+	@add r5 r0 -> r2;
+	@push r2;
+	@loadw sp 0 -> sp;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@jg sp sp ?~L18;
+.L20;
+	@mul r3 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@pull r6;
+	@mul r4 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@mul r3 0+2 -> r0;
+	@add r5 r0 -> r2;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@push r2;
+	@storew sp 0 sp;
+	@mul r4 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@push r6;
+	@push r1;
+	@storew sp 0 sp;
+	r0 = r3;
+	@add r3 0+1 -> r3;
+	@sub r7 0+1 -> r4;
+	jump L23;
+.L22;
+	@mul r3 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@pull r6;
+	@mul r4 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@mul r3 0+2 -> r0;
+	@add r5 r0 -> r2;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@push r2;
+	@storew sp 0 sp;
+	@mul r4 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@push r6;
+	@push r1;
+	@storew sp 0 sp;
+.L25;
+	r0 = r4;
+	@sub r4 0+1 -> r4;
+	r0 = r3;
+	@add r3 0+1 -> r3;
+.L23;
+	@jg r4 r3 ?L22;
+.L24;
+	@add 0+1 0+0 -> r0;
+.L10;
+	@ret r0;
+]
+;
+[ _perm1 xp
+	r0
+	r1
+	r2
+	r3
+	r4
+	r5
+;
+	@sub xp 0+6 -> xp;
+	r3 = r0;
+	r4 = r1;
+	r5 = r2;
+.L27;
+	@je r5 0+0 ?L31;
+	r1 = r4;
+	r0 = r3;
+	@call_vs2 r5 xp r0 r1 r2 r3 r4 r5 -> r0;
+	r2 = r0;
+.L31;
+.L29;
+	r1 = r4;
+	r0 = r3;
+	@call_vs2 _next_lex_perm xp r0 r1 r2 r3 r4 r5 -> r0;
+	r2 = r0;
+	@je r2 0+0 ?~L27;
+.L28;
+.L26;
+	@ret r0;
+]
+;
+[ _boothroyd xp
+	r0
+	r1
+	r2
+	r3
+	r4
+	r5
+	r6
+	r7
+	r8
+	r9
+	r10
+;
+	@sub xp 0+14 -> xp;
+	r4 = r0;
+	r5 = r1;
+	r9 = r2;
+	r7 = r3;
+	@add 0+0 0+0 -> r6;
+.L33;
+	@jg r5 0+2 ?~L37;
+.L36;
+	r3 = r7;
+	r2 = r9;
+	@sub r5 0+1 -> r0;
+	r1 = r0;
+	r0 = r4;
+	@call_vs2 _boothroyd xp r0 r1 r2 r3 r4 r5 -> r0;
+.L37;
+	@sub r5 0+1 -> r0;
+	@jl r6 r0 ?L39;
+.L38;
+	jump L32;
+.L39;
+	@and r5 0+1 -> r0;
+	@je r0 0+0 ?L41;
+.L40;
+	@add 0+0 0+0 -> r0;
+	jump L42;
+.L41;
+	r0 = r6;
+.L42;
+	r8 = r0;
+	@add r6 0+1 -> r6;
+	@sub r5 0+1 -> r0;
+	@mul r0 0+2 -> r0;
+	@add r4 r0 -> r1;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@pull r10;
+	@mul r8 0+2 -> r0;
+	@add r4 r0 -> r1;
+	@sub r5 0+1 -> r0;
+	@mul r0 0+2 -> r0;
+	@add r4 r0 -> r2;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@push r2;
+	@storew sp 0 sp;
+	@mul r8 0+2 -> r0;
+	@add r4 r0 -> r1;
+	@push r10;
+	@push r1;
+	@storew sp 0 sp;
+	@je r7 0+0 ?L44;
+	r1 = r9;
+	r0 = r4;
+	@call_vs2 r7 xp r0 r1 r2 r3 r4 r5 -> r0;
+	r2 = r0;
+.L44;
+	jump L33;
+.L35;
+.L32;
+	@ret r0;
+]
+;
+[ _perm2 xp
+	r0
+	r1
+	r2
+	r3
+	r4
+	r5
+	r6
+;
+	@sub xp 0+6 -> xp;
+	r6 = r0;
+	r4 = r1;
+	r5 = r2;
+	@je r5 0+0 ?L47;
+	r1 = r4;
+	r0 = r6;
+	@call_vs2 r5 xp r0 r1 r2 r3 r4 r5 -> r0;
+	r2 = r0;
+.L47;
+	r3 = r5;
+	r2 = r4;
+	r1 = r4;
+	r0 = r6;
+	@call_vs2 _boothroyd xp r0 r1 r2 r3 r4 r5 -> r0;
+.L45;
+	@ret r0;
+]
+;
+[ _perm3 xp
+	r0
+	r1
+	r2
+	r3
+	r4
+	r5
+	r6
+	r7
+	r8
+;
+	@sub xp 0+76 -> xp;
+	r5 = r0;
+	r4 = r1;
+	r7 = r2;
+	@je r7 0+0 ?L50;
+	r1 = r4;
+	r0 = r5;
+	@call_vs2 r7 xp r0 r1 r2 r3 r4 r5 -> r0;
+	r2 = r0;
+.L50;
+	@add 0+1 0+0 -> r3;
+.L51;
+	jump L56;
+.L55;
+	@add xp 0+12 -> r0;
+	@sub r3 0+1 -> r3;
+	@mul r3 0+2 -> r1;
+	@add r0 r1 -> r0;
+	@add 0+0 0+0 -> sp;
+	@push r0;
+	@storew sp 0 sp;
+.L56;
+	@jg r3 0+1 ?L55;
+.L57;
+	jump L59;
+.L58;
+	@add r3 0+1 -> r3;
+	@jl r3 r4 ?L62;
+.L61;
+	jump L63;
+.L62;
+.L59;
+	@add xp 0+12 -> r0;
+	@mul r3 0+2 -> r1;
+	@add r0 r1 -> r0;
+	@push r0;
+	@loadw sp 0 -> sp;
+	@jl sp r3 ?~L58;
+.L60;
+	@and r3 0+1 -> r0;
+	@je r0 0+0 ?L65;
+.L64;
+	@add xp 0+12 -> r0;
+	@mul r3 0+2 -> r1;
+	@add r0 r1 -> r0;
+	@push r0;
+	@loadw sp 0 -> sp;
+	@pull r1;
+	jump L66;
+.L65;
+	@add 0+0 0+0 -> r1;
+.L66;
+	r6 = r1;
+	@mul r6 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@pull r8;
+	@mul r3 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@mul r6 0+2 -> r0;
+	@add r5 r0 -> r2;
+	@push r1;
+	@loadw sp 0 -> sp;
+	@push r2;
+	@storew sp 0 sp;
+	@mul r3 0+2 -> r0;
+	@add r5 r0 -> r1;
+	@push r8;
+	@push r1;
+	@storew sp 0 sp;
+	@je r7 0+0 ?L68;
+	r1 = r4;
+	r0 = r5;
+	@call_vs2 r7 xp r0 r1 r2 r3 r4 r5 -> r0;
+	r2 = r0;
+.L68;
+.L54;
+	@add xp 0+12 -> r0;
+	@mul r3 0+2 -> r1;
+	@add r0 r1 -> r0;
+	@push r0;
+	@loadw sp 0 -> sp;
+	@add sp 0+1 -> sp;
+	@push r0;
+	@storew sp 0 sp;
+	jump L51;
+.L53;
+.L63;
+.L48;
+	@ret r0;
+]
+;
+[ _main xp
+	r0
+	r1
+	r2
+	r3
+	r4
+	r5
+;
+	@sub xp 0+14 -> xp;
+	@add 0+0 0+0 -> r3;
+	jump L71;
+.L70;
+	@add r3 0+1 -> r0;
+	@add xp 0+2 -> r1;
+	@mul r3 0+2 -> r2;
+	@add r1 r2 -> r1;
+	@push r0;
+	@push r1;
+	@storew sp 0 sp;
+.L73;
+	@add r3 0+1 -> r3;
+.L71;
+	@jl r3 0+6 ?L70;
+.L72;
+	@add _show 0+0 -> r2;
+	@add 0+6 0+0 -> r1;
+	@add xp 0+2 -> r0;
+	@call_vs2 _perm1 xp r0 r1 r2 r3 r4 r5 -> r0;
+	@add _show 0+0 -> r2;
+	@add 0+6 0+0 -> r1;
+	@add xp 0+2 -> r0;
+	@call_vs2 _perm2 xp r0 r1 r2 r3 r4 r5 -> r0;
+	@add _show 0+0 -> r2;
+	@add 0+6 0+0 -> r1;
+	@add xp 0+2 -> r0;
+	@call_vs2 _perm3 xp r0 r1 r2 r3 r4 r5 -> r0;
+	@add 0+0 0+0 -> r0;
+.L69;
+	@ret r0;
+]
+;
+[ __init_vars_permute;
+];

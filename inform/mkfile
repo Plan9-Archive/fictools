@@ -1,0 +1,37 @@
+< /$objtype/mkfile
+
+BIN=/$objtype/bin
+CC=pcc
+CFLAGS=-c
+
+TARG=inform
+OFILES=\
+	arrays.$O\
+	asm.$O\
+	bpatch.$O\
+	chars.$O\
+	directs.$O\
+	errors.$O\
+	expressc.$O\
+	expressp.$O\
+	files.$O\
+	inform.$O\
+	lexer.$O\
+	linker.$O\
+	memory.$O\
+	objects.$O\
+	states.$O\
+	symbols.$O\
+	syntax.$O\
+	tables.$O\
+	text.$O\
+	veneer.$O\
+	verbs.$O\
+
+UPDATE=\
+	mkfile\
+	$HFILES\
+	${OFILES:%.$O=%.c}\
+	${TARG:%=/$objtype/bin/%}\
+
+</sys/src/cmd/mkone

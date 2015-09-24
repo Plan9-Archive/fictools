@@ -1,0 +1,134 @@
+Switches v8xE1;
+Constant UseHints; ! Remove this line to remove hints from game
+Constant UseMF;    ! Remove this line to remove male and female charactor choices 
+Constant STRICT_MODE;
+Constant debug;
+Constant Debug2;
+
+#Ifdef UseMF;
+Constant male1 = 'male';Constant male2 = 'm//';Constant female1 = 'female';Constant female2 = 'f//';
+#Endif;
+
+Constant Story "SHELL";
+Constant Headline "^An Example Shell^
+             Copyright (c) 2000-2001 The Public Domain^ No Rights Reserved^";
+
+#Ifdef UseMF;
+Global Gender; !1= male 2= female 
+#Endif;
+
+#Ifdef UseHints;
+Replace DoMenu; Replace LowKey_Menu; 
+#Endif;
+
+Include "Parser";
+
+#IfDef UseHints;
+Include "Utility.h";
+Include "DoMenu";
+Include "modAltMenu.h";
+Menu hint_menu;
+Include "Hints.h";
+#EndIf;
+
+Include "Verblib";
+
+#IfDef UseHints;
+!hint objects go here 
+           Menu "Prologue" hint_menu;
+               HintTopic ->-> "What do I do here?";
+                       Hint ->->-> with description "Look around.";
+                       Hint ->->-> with description "Move around.";
+           Menu "Part 1" hint_menu;
+               HintTopic ->-> "Who am I?";
+                       Hint ->->-> with description [; if (player has female) "You are Jane Doe"; "You are John Doe";];
+               HintTopic ->-> "What Do I do?";
+                       Hint ->->-> with description "Not a lot";
+                       Hint ->->-> with description "Nothing at all";
+                       Hint ->->-> with description "because this ain't a real game";
+#Endif;
+!classes go here
+Class   Room
+	has  static light;
+
+Class Person
+	has proper animate male;
+!objects go here
+Room empty_room "empty room"
+	with description
+		"In this tiny room, there are only four walls, a roof and a floor.";
+
+#Ifdef UseMF;
+Person maleperson;
+Person femaleperson 
+has female;
+#ifnot;
+Person Playerperson;
+#EndIf;
+
+[ TitlePage i;
+   @erase_window -1; print "^^^^^";
+font off; 
+spaces(8);
+print"^
+|        +----------------------------------------------+^
+|        |SSSSSS    H    H    EEEEEE    L         L     |^
+|        |S         H    H    E         L         L     |^
+|        |SSSSSS    HHHHHH    EEEEEE    L         L     |^
+|        |     S    H    H    E         L         L     |^
+|        |SSSSSS    H    H    EEEEEE    LLLLLL    LLLLLL|^
+|        +----------------------------------------------+^
+|        v. 2.0";
+
+
+spaces(0);
+do { @read_char 1 0 0 i; } until (i==32 or 10 or 13);
+   @erase_window -1;
+   ];
+#ifDef UseMF;
+[ MaleOrFemale i; for (::) { if (location == nothing || parent(player) == nothing) read buffer parse; else read buffer parse DrawStatusLine; i=parse-->1; if (i==male1 or male2) rtrue; if (i==female1 or female2) rfalse; ; print "Please answer male or female.> "; }];
+#endif;
+
+#IfDef UseMF;
+[ Initialise temp;
+#ifnot;
+[ Initialise;
+#endif;
+if (standard_interpreter == 0)
+    {   print "This game must be played on an interpreter obeying the
+               Z-Machine Standard.^";
+        @quit;
+    }
+TitlePage();
+#ifdef UseMF;
+print "Male/Female?";temp = MaleOrFemale();if (temp==true){ChangePlayer(maleperson);Gender=1;};if (temp==false){ChangePlayer(femaleperson); Gender=2;};
+#ifnot;
+ChangePlayer(PlayerPerson);
+#endif;
+location = Empty_room;
+
+];
+[xyzzySub;
+"Nothing happens";
+];
+[frotzSub;
+"Nothing happens";
+];
+[blorbSub;
+"Nothing happens";
+];
+
+[ CommentSub; ];
+
+Include "Grammar";
+verb 'xyzzy'
+	*					->xyzzy;
+verb 'frotz'
+	*					->frotz;
+verb 'blorb'
+	*					->blorb;
+
+Verb meta '!'
+    *       -> Comment
+    * topic -> Comment; 
+   

@@ -1,0 +1,75 @@
+Silicon Castles
+===============
+
+(C) 2001 David Given & others
+(See the in-game credits for the full list)
+The author may be contacted at dg@cowlark.com
+
+'Full Disclosure' Version 1.0
+
+When these notes were written
+-----------------------------
+
+0100 GMT, 15 Nov 2001.
+
+State of mind
+-------------
+
+Tired.
+
+What you need to build
+----------------------
+
+Unix.
+
+VBCC with the Z-machine patch. This is available at:
+	http://plover.net/~hjalfi/debian/vbcc
+Installing the Debian package is recommended.
+
+A working Z-machine interpreter. Some versions of Nitfol & Zip have bugs that
+cause the game to fail; Frotz is known to work. See castles.inf for more
+information.
+
+A working version of Inform & the Inform library. The stock version has some
+bugs that may cause problems. The branch overflow warning patch is recommended,
+as is the input buffer overflow patch; the constant folding patch is required.
+The Inform patch page can be found here:
+	http://homepages.tesco.net/~roger.firth/patch.html
+
+awk. This is used to massage various data files.
+
+How to build
+------------
+
+The MSCP chess engine uses a look-up table to determine initial moves, known as
+the opening book. Stock MSCP loads this from a file. It is possible to build
+_Castles_ so that the data that would normally be in this file is built in to
+the image.
+
+Unfortunately it takes about a minute for the Z-machine to parse all this data.
+As a result, the game can use auxiliary files to save the parsed data to disk.
+
+To further speed things up, it's possible to build _Castles_ so the preparsed
+data is included directly in the game. In order to do this, a saved version of
+the data must exist.
+
+So, to build the fastest version of the game with a new version of the book:
+
+1. Build with slow-book support.
+2. Run the game. Save the data when prompted.
+3. Rebuild with fast-book support.
+
+The slow-book version will only reparse the data if an auxiliary file cannot be
+found. For your comfort and convenience, a pre-built one has been supplied, so
+you can proceed directly to step three.
+
+To change the fast/slow settings, edit the top of the Makefile. You may also
+need to tell the makefile the name of the book's auxiliary file. (The Makefile
+is set up for Frotz.)
+
+License
+-------
+
+This software is distributed under the GNU Public License. See COPYING for the
+full text.
+

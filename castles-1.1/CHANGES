@@ -1,0 +1,20 @@
+1.1 'Mostly Working'
+--------------------
+
+Cosmetic improvements and typo reduction.
+Better move parser; column B should now work.
+Added BUGGERS.
+Investigated castling, but the bug is deep inside the move tree generator and I
+don't understand that.
+Now compiles with abbreviations.
+
+1.0 'Full Disclosure'
+---------------------
+
+Added CREDITS and real name.
+
+0.9
+---
+
+First release. IFComp 2001.
+

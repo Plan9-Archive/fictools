@@ -1,0 +1,269 @@
+! castles.inf
+! Silicon Castles top-level file
+! (C) 2001 David Given
+
+constant Story "Silicon Castles";
+constant Headline
+	"^An Interactive Board Game^
+	Copyright (C) 2001 David Given & others^
+	(type 'credits' for the full list)^
+	Please send any feedback to dg@@64cowlark.com^
+	'Nearly Working' version 1.1^";
+
+#include "release.h";
+#include "abbreviations.h";
+
+replace DrawStatusLine;
+
+#include "Parser";
+#include "VerbLib";
+
+! Data tables.
+
+#ifdef FAST_BOOK;
+#include "book.hb";
+#ifnot;
+#include "book.hi";
+constant WANT_PSEUDO_FILE;
+#endif;
+
+! General globals.
+
+global screen_width;
+
+! Game (Inform code).
+
+#include "texteffects.h";
+#include "fileio.h";
+#include "chessboard.h";
+#include "genie.h";
+#include "history.h";
+#include "objects.h";
+
+! Game (C code & support files).
+
+#include "/usr/share/vbcc/arch/z/runtime.s";
+#include "libc/zlibc.inf";
+#include "c/system.s";
+#include "c/mscp.o";
+
+[ Initialise  i;
+	! Fetch the screen width.
+
+	screen_width = 0->33;
+	if (~~screen_width)
+		screen_width = 80;
+
+	! Check for interpreter features.
+
+	SignedComparisonBugCheck();
+	SignExtensionBugCheck();
+	StandardCheck();
+	InterpreterCheck();
+	ScreenWidthCheck();
+
+	! Title page.
+
+	@erase_window -1;
+	box
+		"We are but chessmen, destined, it is plain,"
+		"That great chess-player, Heaven, to entertain;"
+		"It moves us on life's chess-board to and fro,"
+		"And then in death's dark box shuts up again."
+		""
+		"--- The Rubaiyat of Omar Khayyam, s.270";
+	font off;
+	center(15);
+	style bold;
+	print "Silicon Castles^";
+	style roman;
+	print "^^";
+	center(12);
+	print "by Jack Maet^^^^";
+
+	! Initialise the chess engine.
+
+	flush_output();
+	InitLibC();
+	__init_vars_mscp();
+	cinvoke(_MSCP_Initialise);
+
+	! Prompt the user to continue.
+
+	center(28);
+	print "[Press any key to continue.] ";
+	@read_char 1 -> i;
+	font on;
+	@erase_window -1;
+
+#ifndef FAST_BOOK;
+	! Build the book now and save it.
+
+	cinvoke(_MSCP_LoadBook);
+#endif;
+
+	! Main game setup.
+
+	print "^^Maybe on second thoughts all that red wine and cheese just
+	before bed wasn't such a good idea. On top of your medication,
+	too...^^";
+	location = Armchair;
+	move Chessboard to Table;
+];
+
+! The player has died.
+
+[ DeathMessage;
+	print "You have been turned into a cockroach by an angry genie";
+];
+
+! Game credits.
+
+[ CreditsSub;
+	"^", (ul) "Silicon Castles^",
+	"(C) 1995-2001 David Given, Marcel van Kervinck, Tim Eagen, Robert de
+	Bath, Steven Huang, Joel N Weber II and the Free Software Foundation^",
+	"^",
+	(b) "Main program and game", " David Given^",
+	(b) "MSCP chess engine", " Marcel van Kervinck^",
+	(b) "History of Chess", " Tim Eagen^",
+	(b) "VBCC C compiler core", " Volker Barthelmann^",
+	(b) "Z-machine code generator for VBCC", " David Given^",
+	(b) "Minimalist libc", " David Given & the ELKS project^",
+	"^",
+	"Source and binaries for ", (ul) "Silicon Castles", " may be obtained
+	from:^",
+	(tt) "   http://www.cowlark.com^",
+	"The original MSCP chess engine is available at:^",
+	(tt) "   http://brick.bitpit.net/@@126marcelk/mscp^",
+	"The VBCC C compiler's home page is at:^",
+	(tt) "   http://www.compilers.de/vbcc^",
+	"...and the version with my Z-machine code generator and Linux binaries
+	can be found at:^",
+	(tt) "   http://plover.net/@@126hjalfi/debian/vbcc^",
+	"The ELKS project (Linux for the 8086) is at:^",
+	(tt) "   http://www.elks.ecs.soton.ac.uk^",
+	"The full chess history may be obtained from:^",
+	(tt) "   http://www.stmoroky.com/games/chess/chess.htm^",
+	"(and that includes the picture of the circular chess board that I
+	didn't even ", (ul) "think", " of trying to represent as ASCII art.)^",
+	"^",
+	"All code in ", (ul) "Silicon Castles", " is licensed under the
+	GNU Public License: the main game, the MSCP chess engine, and the
+	cut-down libc. The history of chess is used with permission.^",
+	"^",
+	"Numerous bugs were found and reported by a list of people too long to
+	list here; type 'BUGGERS' for the full list.^",
+	"^",
+	"Thanks also go to: Graham Nelson, without whose industrial archaeology
+	none of this would be possible; Infocom, for designing the Z-machine in
+	the first place; rec.games.int-fiction, for warping my mind
+	sufficiently that I actually decided to want to do this in the first
+	place; Volker Barthelmann, for patiently answering all my inane queries
+	about VBCC code generators; and Iain Merick, for beta-testing it.. I
+	hope you think the game was worth the trouble. Ha!";
+];
+
+[ BuggersSub;
+	"(Fixed) bugs reported by:^",
+	"^",
+	"Kevin Bracey^",
+	"Finnian^",
+	"Iain Merrick (the first beta tester)";
+];
+
+! Press ENTER or Q.
+
+[ EnterOrQ  i;
+	print "^^Press ENTER to continue or Q to quit. ";
+
+	do {
+		@read_char 1 -> i;
+	} until ((i == 13) || (i == 10) || (i == 'q') || (i == 'Q'));
+
+	if ((i == 13) || (i == 10))
+		return;
+
+	print "QUIT^^Goodbye.";
+	@quit;
+];
+
+! Check for interpreter bugs.
+
+[ SignedComparisonBugCheck  i j;
+	i = -32760;
+	j = 32760;
+	if (i < j)
+		return;
+
+	@erase_window 0;
+	print "^Your interpreter has a bug in the signed comparison routines
+	(it thinks that -32760 > 32760). I can continue if you like, but
+	there's no guarantee that the game will work properly. I recommend
+	using a different interpreter. (", (ul) "Frotz", " is good.)^
+	^
+	(", (ul) "Nitfol", " has this bug when compiled with certain options.)";
+	EnterOrQ();
+];
+
+[ SignExtensionBugCheck  i j;
+	i = $FF00;
+	@art_shift i 0-8 -> i;
+	if (i == $FFFF)
+		return;
+
+	@erase_window 0;
+	print "^Your interpreter has a bug in the arithmetic shift opcode (it
+	thinks that $FF00 asr 8 != $FFFF). I can continue if you like, but this
+	bug renders a lot of the game unplayable. I recommend using a different
+	interpreter. (", (ul) "Frotz", " is good.)^
+	^
+	(", (ul) "Zip", " has this bug.)";
+	EnterOrQ();
+];
+
+! Check for a standard interpreter.
+
+[ StandardCheck  i;
+	if (standard_interpreter)
+		return;
+
+	@erase_window 0;
+	print "^Your interpreter does not conform to the Z-Machine standard. As
+	this game uses a number of rather exotic interpreter features, it may
+	not work correctly. I can proceed if you like, but you have been
+	warned.";
+	EnterOrQ();
+];
+
+! Check what interpreter we're using.
+
+[ InterpreterCheck;
+	if (0->31 ~= 'B')
+		return;
+	if (standard_interpreter)
+		return;
+
+	@erase_window 0;
+	print "^Your interpreter appears to be ZIP. Unfortunately, some
+	versions of ZIP don't support timed input, which this game needs. If
+	you find the animations taking stupid amounts of time, you can used the
+	command ", (b) "timedinput off", " and I'll try to compensate.";
+	EnterOrQ();
+];
+
+! Check the screen width.
+
+[ ScreenWidthCheck;
+	if (0->33 >= 80)
+		return;
+
+	@erase_window 0;
+	print "^You really need a screen that's 80 characters or more across to
+	play this game. I can proceed anyway, but some of the formatting may be
+	screwed up.";
+	EnterOrQ();
+];
+
+#include "grammar.h";
+

@@ -1,0 +1,18 @@
+#!/bin/rc
+
+pcc getopt.c
+pcc infinfo.c
+pcc infodump.c
+pcc showdict.c
+pcc showhead.c
+pcc showobj.c
+pcc showverb.c
+pcc -D_POSIX_SOURCE symbols.c
+pcc txd.c
+pcc txio.c
+pcc -o pix2gif pix2gif.c
+pcc -o check check.c
+pcc -o infodump infodump.8 showhead.8 showdict.8 showobj.8 showverb.8 txio.8 infinfo.8 symbols.8
+pcc -o txd txd.8 txio.8 showverb.8 infinfo.8 symbols.8 showobj.8
+lc
+echo infodump txd check pix2gif built

@@ -1,0 +1,6579 @@
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/Makefile vbcc-0.7.orig/Makefile
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/Makefile	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/Makefile	Sat Sep 19 22:54:09 2015
+@@ -1,7 +1,7 @@
+-
++TARGET=z
+ # used to create vbcc, vc and vcpp
+-CC = vc -DAMIGA
+-LDFLAGS = -lmieee -lextra
++CC = pcc
++#LDFLAGS = -lmieee -lextra
+ 
+ # native version; used to create dtgen
+ NCC = $(CC)
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/Makefile.in vbcc-0.7.orig/Makefile.in
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/Makefile.in	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/Makefile.in	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,183 @@
++# The usual settings.
++
++CC =		gcc
++CFLAGS =	-O2 -g -fsigned-char
++TARGETDIR=	machines/$(TARGET)
++INCLUDES =	-I. -Imachines/$(TARGET)
++LIBS =
++
++# These are the available targets.
++
++TARGETS = \
++	alpha		\
++	c16x		\
++	i386		\
++	m68k		\
++	ppc		\
++	z
++
++# C file compilation rules.
++
++COMPILE = $(CC) $(CFLAGS) $(INCLUDES)
++%.o: %.c
++	$(COMPILE) -c -o $@ $<
++
++# Top-level rules.
++
++all: compilers frontend vcpp
++
++clean: compilers-clean frontend-clean vcpp-clean
++
++# === The front-end ==========================================================
++
++VCOBJS = \
++	frontend/vc.o
++
++bin/vc: $(VCOBJS)
++	$(CC) $(LIBS) $(VCOBJS) -o $@
++
++.PHONY: frontend
++frontend: bin/vc
++
++.PHONY: frontend-clean
++frontend-clean:
++	$(RM) $(VCOBJS)
++	$(RM) bin/vc
++
++# === The preprocessor =======================================================
++
++VCPPOBJS = \
++	vcpp/cpp.o		\
++	vcpp/eval.o		\
++	vcpp/getopt.o		\
++	vcpp/hideset.o		\
++	vcpp/include.o		\
++	vcpp/lex.o		\
++	vcpp/macro.o		\
++	vcpp/nlist.o		\
++	vcpp/tokens.o		\
++	vcpp/unix.o
++
++bin/vcpp: $(VCPPOBJS)
++	$(CC) $(LIBS) $(VCPPOBJS) -o $@
++
++.PHONY: vcpp
++vcpp: bin/vcpp
++
++.PHONY: vcpp-clean
++vcpp-clean:
++	$(RM) $(VCPPOBJS)
++	$(RM) bin/vcpp
++
++# === The compilers ==========================================================
++
++.PHONY: compilers
++compilers:
++	for target in $(TARGETS); do \
++		$(MAKE) TARGET=$$target compiler.$$target; \
++	done
++
++.PHONY: compilers-clean
++compilers-clean: dtgen-clean
++	for target in $(TARGETS); do \
++		$(MAKE) TARGET=$$target compiler-clean.$$target; \
++	done
++
++# Build the dtgen program.
++
++DTGENOBJECTS = \
++	datatypes/dtgen.o
++
++datatypes/dtgen.o: datatypes/dtgen.c datatypes/datatypes.h datatypes/dtconv.h
++
++dtgen: $(DTGENOBJECTS)
++	$(CC) $(DTGENOBJECTS) -o $@ $(LIBS)
++
++.PHONY: dtgen-clean
++dtgen-clean:
++	$(RM) dtgen $(DTGENOBJECTS)
++
++# Build a generic compiler.
++
++BOBJECTS = \
++	$(TARGETDIR)/main.o		\
++	$(TARGETDIR)/vars.o		\
++	$(TARGETDIR)/declaration.o	\
++	$(TARGETDIR)/parse_expr.o	\
++	$(TARGETDIR)/type_expr.o	\
++	$(TARGETDIR)/ic.o		\
++	$(TARGETDIR)/machine.o		\
++	$(TARGETDIR)/statements.o	\
++	$(TARGETDIR)/preproc.o		\
++	$(TARGETDIR)/supp.o		\
++	$(TARGETDIR)/dt.o
++
++$(TARGETDIR)/main.o: 		main.c vbc.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/vars.o: 		vars.c vbc.h supp.h $(TARGETDIR)/machine.h errors.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/declaration.o: 	declaration.c vbc.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/parse_expr.o: 	parse_expr.c vbc.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/type_expr.o: 	type_expr.c vbc.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/ic.o: 		ic.c vbc.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/statements.o: 	statements.c vbc.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/preproc.o: 	preproc.c vbpp.h supp.h vbc.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/supp.o: 		supp.c supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/machine.o: 	$(TARGETDIR)/machine.c $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/dt.o: 		$(TARGETDIR)/dt.c $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $< -Idatatypes
++
++FOBJECTS = \
++	$(BOBJECTS) \
++	$(TARGETDIR)/opt.o		\
++	$(TARGETDIR)/av.o		\
++	$(TARGETDIR)/rd.o		\
++	$(TARGETDIR)/regs.o		\
++	$(TARGETDIR)/flow.o		\
++	$(TARGETDIR)/cse.o		\
++	$(TARGETDIR)/cp.o		\
++	$(TARGETDIR)/loop.o		\
++	$(TARGETDIR)/alias.o
++
++$(TARGETDIR)/opt.o: 		opt.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/av.o: 		av.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/rd.o: 		rd.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/regs.o: 		regs.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/flow.o: 		flow.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/cse.o: 		cse.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/cp.o: 		cp.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/loop.o: 		loop.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++$(TARGETDIR)/alias.o: 		alias.c opt.h supp.h $(TARGETDIR)/machine.h $(TARGETDIR)/dt.h
++	$(COMPILE) -c -o $@ $<
++
++$(TARGETDIR)/dt.h: dtgen
++	./dtgen $(TARGETDIR)/machine.dt $(TARGETDIR)/dt.h $(TARGETDIR)/dt.c
++	
++bin/vbcc$(TARGET): $(TARGETDIR)/dt.h $(FOBJECTS)
++	$(CC) $(FOBJECTS) -o bin/vbcc$(TARGET) $(LIBS)
++
++.PHONY: compiler.$(TARGET)
++compiler.$(TARGET): bin/vbcc$(TARGET)
++
++.PHONY: compiler-clean.$(TARGET)
++compiler-clean.$(TARGET):
++	$(RM) $(FOBJECTS) bin/vbcc$(TARGET)
++	$(RM) $(TARGETDIR)/dt.h $(TARGETDIR)/dt.c
++
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/aos68k vbcc-0.7.orig/config/aos68k
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/aos68k	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/aos68k	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,14 @@
++-cc=vbccm68k -quiet -hunkdebug %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-amigaos/include
++-ccv=vbccm68k -hunkdebug %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-amigaos/include
++-as=vasmm68k_mot -quiet -Fhunk -phxass -opt-fconst -nowarn=62 %s -o %s
++-asv=vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 %s -o %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/m68k-amigaos/lib/startup.o %s %s -L$VBCC/targets/m68k-amigaos/lib -lvc -o %s
++-l2=vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/m68k-amigaos/lib -o %s
++-ldv=vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/m68k-amigaos/lib/startup.o %s %s -L$VBCC/targets/m68k-amigaos/lib -lvc -o %s
++-l2v=vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/m68k-amigaos/lib -o %s
++-ldnodb=-s -Rshort
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/aosppc vbcc-0.7.orig/config/aosppc
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/aosppc	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/aosppc	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,23 @@
++-elf
++-no-regnames
++-no-multiple-ccs
++-madd
++-c99
++-use-commons
++-cc=vbccppc -quiet %s -o= %s %s -O=%ld -I$VBCC/targets/ppc-amigaos/include -D__amigaos4__
++-ccv=vbccppc %s -o= %s %s -O=%ld -I$VBCC/targets/ppc-amigaos/include -D__amigaos4__
++-as=vasmppc_std -quiet -Felf -opt-branch -no-regnames -nowarn=62 %s -o %s
++-asv=vasmppc_std -Felf -opt-branch -no-regnames -nowarn=62 %s -o %s
++-isc=vscppc -quiet %s %s
++-iscv=vscppc %s %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -belf32amigaos -q -n -P_start -nostdlib -fixunnamed -T$VBCC/targets/ppc-amigaos/lib/script $VBCC/targets/ppc-amigaos/lib/startup.o %s %s -L$VBCC/targets/ppc-amigaos/lib -lvc -o %s
++-l2=vlink -belf32amigaos -q -n -P_start -nostdlib -fixunnamed -T$VBCC/targets/ppc-amigaos/lib/script %s %s -L$VBCC/targets/ppc-amigaos/lib -o %s
++-ldv=vlink -belf32amigaos -t -q -n -P_start -nostdlib -fixunnamed -T$VBCC/targets/ppc-amigaos/lib/script $VBCC/targets/ppc-amigaos/lib/startup.o %s %s -L$VBCC/targets/ppc-amigaos/lib -lvc -o %s
++-l2v=vlink -belf32amigaos -t -q -n -P_start -nostdlib -fixunnamed -T$VBCC/targets/ppc-amigaos/lib/script %s %s -L$VBCC/targets/ppc-amigaos/lib -o %s
++-ldnodb=-s -x
++-ldstatic=-Bstatic
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/kick13 vbcc-0.7.orig/config/kick13
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/kick13	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/kick13	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,14 @@
++-cc=vbccm68k -quiet -hunkdebug %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-amigaos/include
++-ccv=vbccm68k -hunkdebug %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-amigaos/include
++-as=vasmm68k_mot -quiet -Fhunk -phxass -nowarn=62 %s -o %s
++-asv=vasmm68k_mot -Fhunk -phxass -nowarn=62 %s -o %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/m68k-amigaos/lib/startup13.o %s %s -L$VBCC/targets/m68k-amigaos/lib -lvc -o %s
++-l2=vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/m68k-amigaos/lib -o %s
++-ldv=vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/m68k-amigaos/lib/startup13.o %s %s -L$VBCC/targets/m68k-amigaos/lib -lvc -o %s
++-l2v=vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/m68k-amigaos/lib -o %s
++-ldnodb=-s
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/mint vbcc-0.7.orig/config/mint
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/mint	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/mint	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,14 @@
++-cc=vbccm68k -quiet %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-atari/include
++-ccv=vbccm68k %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-atari/include
++-as=vasmm68k_mot -quiet -Faout -phxass -nowarn=62 %s -o %s
++-asv=vasmm68k_mot -Faout -phxass -nowarn=62 %s -o %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -baoutmint -tos-flags 7 -x -Bstatic -Cvbcc -P__stksize -nostdlib $VBCC/targets/m68k-atari/lib/startup.o %s %s -L$VBCC/targets/m68k-atari/lib -lvc -o %s
++-l2=vlink -baoutmint -tos-flags 7 -x -Bstatic -Cvbcc -P__stksize -nostdlib %s %s -L$VBCC/targets/m68k-atari/lib -o %s
++-ldv=vlink -baoutmint -tos-flags 7 -t -x -Bstatic -Cvbcc -P__stksize -nostdlib $VBCC/targets/m68k-atari/lib/startup.o %s %s -L$VBCC/targets/m68k-atari/lib -lvc -o %s
++-l2v=vlink -baoutmint -tos-flags 7 -t -x -Bstatic -Cvbcc -P__stksize -nostdlib %s %s -L$VBCC/targets/m68k-atari/lib -o %s
++-ldnodb=-s
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/mintcf vbcc-0.7.orig/config/mintcf
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/mintcf	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/mintcf	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,14 @@
++-cc=vbccm68k -quiet -cpu=5474 %s -o= %s %s -O=%ld -I$VBCC/targets/cf-atari/include
++-ccv=vbccm68k -cpu=5474 %s -o= %s %s -O=%ld -I$VBCC/targets/cf-atari/include
++-as=vasmm68k_mot -quiet -mv4e -Faout -phxass -nowarn=62 %s -o %s
++-asv=vasmm68k_mot -mv4e -Faout -phxass -nowarn=62 %s -o %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -baoutmint -tos-flags 7 -x -Bstatic -Cvbcc -P__stksize -nostdlib $VBCC/targets/cf-atari/lib/startup.o %s %s -L$VBCC/targets/cf-atari/lib -lvc -o %s
++-l2=vlink -baoutmint -tos-flags 7 -x -Bstatic -Cvbcc -P__stksize -nostdlib %s %s -L$VBCC/targets/cf-atari/lib -o %s
++-ldv=vlink -baoutmint -tos-flags 7 -t -x -Bstatic -Cvbcc -P__stksize -nostdlib $VBCC/targets/cf-atari/lib/startup.o %s %s -L$VBCC/targets/cf-atari/lib -lvc -o %s
++-l2v=vlink -baoutmint -tos-flags 7 -t -x -Bstatic -Cvbcc -P__stksize -nostdlib %s %s -L$VBCC/targets/cf-atari/lib -o %s
++-ldnodb=-s
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/morphos vbcc-0.7.orig/config/morphos
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/morphos	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/morphos	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,23 @@
++-elf
++-no-regnames
++-no-multiple-ccs
++-madd
++-c99
++-no-align-args
++-use-commons
++-cc=vbccppc -quiet %s -o= %s %s -O=%ld -I$VBCC/targets/ppc-morphos/include -D__MORPHOS__ -D__MORPHOS_NODIRECTCALL
++-ccv=vbccppc %s -o= %s %s -O=%ld -I$VBCC/targets/ppc-morphos/include -D__MORPHOS__ -D__MORPHOS_NODIRECTCALL
++-as=vasmppc_std -quiet -Felf -opt-branch -no-regnames -nowarn=62 %s -o %s
++-asv=vasmppc_std -Felf -opt-branch -no-regnames -nowarn=62 %s -o %s
++-isc=vscppc -quiet %s %s
++-iscv=vscppc %s %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -belf32morphos -Cvbccelf -P__amigappc__ -P__abox__ -nostdlib $VBCC/targets/ppc-morphos/lib/startup.o %s %s -L$VBCC/targets/ppc-morphos/lib -lvc -o %s
++-l2=vlink -belf32morphos -Cvbccelf -P__amigappc__ -P__abox__ -nostdlib %s %s -L$VBCC/targets/ppc-morphos/lib -o %s
++-ldv=vlink -belf32morphos -Cvbccelf -t -P__amigappc__ -P__abox__ -nostdlib $VBCC/targets/ppc-morphos/lib/startup.o %s %s -L$VBCC/targets/ppc-morphos/lib -lvc -o %s
++-l2v=vlink -belf32morphos -Cvbccelf -t -P__amigappc__ -P__abox__ -nostdlib %s %s -L$VBCC/targets/ppc-morphos/lib -o %s
++-ldnodb=-s -x
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/newlib vbcc-0.7.orig/config/newlib
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/newlib	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/newlib	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,23 @@
++-elf
++-no-regnames
++-no-multiple-ccs
++-c99
++-setccs
++-use-commons
++-cc=vbccppc -quiet %s -o= %s %s -O=%ld -I$VBCC/sdk/OS4/newlib/include -I$VBCC/sdk/OS4/Include/include_h -D__amigaos4__ -D__NEWLIB__
++-ccv=vbccppc %s -o= %s %s -O=%ld -I$VBCC/sdk/OS4/newlib/include -I$VBCC/sdk/OS4/Include/include_h -D__amigaos4__ -D__NEWLIB__
++-as=vasmppc_std -quiet -Felf -opt-branch -no-regnames -nowarn=62 %s -o %s
++-asv=vasmppc_std -Felf -opt-branch -no-regnames -nowarn=62 %s -o %s
++-isc=vscppc -quiet %s %s
++-iscv=vscppc %s %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -belf32ppcbe -q -n -Cvbccelf -P_start -nostdlib -fixunnamed -interp "vbcc0.9" -T$VBCC/targets/ppc-amigaos/lib/script -L$VBCC/sdk/OS4/newlib/lib $VBCC/sdk/OS4/newlib/lib/startup.o %s %s -lvbcc -lc -o %s
++-l2=vlink -belf32ppcbe -q -n -Cvbccelf -P_start -nostdlib -fixunnamed -interp "vbcc0.9" -T$VBCC/targets/ppc-amigaos/lib/script -L$VBCC/sdk/OS4/newlib/lib %s %s -o %s
++-ldv=vlink -belf32ppcbe -t -q -n -Cvbccelf -P_start -nostdlib -fixunnamed -interp "vbcc0.9" -T$VBCC/targets/ppc-amigaos/lib/script -L$VBCC/sdk/OS4/newlib/lib $VBCC/sdk/OS4/newlib/lib/startup.o %s %s -lvbcc -lc -o %s
++-l2v=vlink -belf32ppcbe -t -q -n -Cvbccelf -P_start -nostdlib -fixunnamed -interp "vbcc0.9" -T$VBCC/targets/ppc-amigaos/lib/script -L$VBCC/sdk/OS4/newlib/lib %s %s -o %s
++-ldnodb=-s -x
++-ldstatic=-Bstatic
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/powerup vbcc-0.7.orig/config/powerup
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/powerup	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/powerup	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,22 @@
++-elf
++-no-regnames
++-no-multiple-ccs
++-madd
++-no-align-args
++-use-commons
++-cc=vbccppc -quiet %s -o= %s %s -O=%ld -I$VBCC/targets/ppc-powerup/include
++-ccv=vbccppc %s -o= %s %s -O=%ld -I$VBCC/targets/ppc-powerup/include
++-as=vasmppc_std -quiet -Felf -opt-branch -no-regnames -nowarn=62 %s -o %s
++-asv=vasmppc_std -Felf -opt-branch -no-regnames -nowarn=62 %s -o %s
++-isc=vscppc -quiet %s %s
++-iscv=vscppc %s %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -belf32amiga -Cvbccelf -nostdlib $VBCC/targets/ppc-powerup/lib/startup.o %s %s -L$VBCC/targets/ppc-powerup/lib -lvc -lpowerup -o %s
++-l2=vlink -belf32amiga -Cvbccelf -nostdlib %s %s -L$VBCC/targets/ppc-powerup/lib -o %s
++-ldv=vlink -belf32amiga -t -Cvbccelf -nostdlib $VBCC/targets/ppc-powerup/lib/startup.o %s %s -L$VBCC/targets/ppc-powerup/lib -lvc -lpowerup -o %s
++-l2v=vlink -belf32amiga -t -Cvbccelf -nostdlib %s %s -L$VBCC/targets/ppc-powerup/lib -o %s
++-ldnodb=-s -x
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/tos vbcc-0.7.orig/config/tos
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/tos	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/tos	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,14 @@
++-cc=vbccm68k -quiet %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-atari/include
++-ccv=vbccm68k %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-atari/include
++-as=vasmm68k_mot -quiet -Faout -phxass -nowarn=62 %s -o %s
++-asv=vasmm68k_mot -Faout -phxass -nowarn=62 %s -o %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -bataritos -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/m68k-atari/lib/startup.o %s %s -L$VBCC/targets/m68k-atari/lib -lvc -o %s
++-l2=vlink -bataritos -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/m68k-atari/lib -o %s
++-ldv=vlink -bataritos -t -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/m68k-atari/lib/startup.o %s %s -L$VBCC/targets/m68k-atari/lib -lvc -o %s
++-l2v=vlink -bataritos -t -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/m68k-atari/lib -o %s
++-ldnodb=-s
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/tos16 vbcc-0.7.orig/config/tos16
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/tos16	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/tos16	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,14 @@
++-cc=vbccm68ks -quiet %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-atari/include
++-ccv=vbccm68ks %s -o= %s %s -O=%ld -I$VBCC/targets/m68k-atari/include
++-as=vasmm68k_mot -quiet -Faout -phxass -nowarn=62 %s -o %s
++-asv=vasmm68k_mot -Faout -phxass -nowarn=62 %s -o %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -bataritos -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/m68k-atari/lib/startup16.o %s %s -L$VBCC/targets/m68k-atari/lib -lvc16 -o %s
++-l2=vlink -bataritos -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/m68k-atari/lib -o %s
++-ldv=vlink -bataritos -t -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/m68k-atari/lib/startup16.o %s %s -L$VBCC/targets/m68k-atari/lib -lvc16 -o %s
++-l2v=vlink -bataritos -t -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/m68k-atari/lib -o %s
++-ldnodb=-s
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/config/warpos vbcc-0.7.orig/config/warpos
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/config/warpos	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/config/warpos	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,20 @@
++-poweropen
++-sc
++-no-multiple-ccs
++-madd
++-cc=vbccppc -quiet %s -o= %s %s -O=%ld -I$VBCC/targets/ppc-warpos/include
++-ccv=vbccppc %s -o= %s %s -O=%ld -I$VBCC/targets/ppc-warpos/include
++-isc=vscppc -quiet %s %s
++-iscv=vscppc %s %s
++-as=vasmppc_std -quiet -Fhunk -sdreg=2 -opt-branch -nowarn=62 %s -o %s
++-asv=vasmppc_std -Fhunk -sdreg=2 -opt-branch -nowarn=62 %s -o %s
++-rm=rm -f %s
++-rmv=rm %s
++-ld=vlink -bamigaehf -x -Bstatic -Cvbcc -nostdlib $VBCC/targets/ppc-warpos/lib/warpup.o %s %s -L$VBCC/targets/ppc-warpos/lib -lvc $VBCC/targets/ppc-warpos/lib/x.o -o %s
++-l2=vlink -bamigaehf -x -Bstatic -Cvbcc -nostdlib %s %s -L$VBCC/targets/ppc-warpos/lib -o %s
++-ldv=vlink -bamigaehf -x -Bstatic -Cvbcc -t -nostdlib $VBCC/targets/ppc-warpos/lib/warpup.o %s %s -L$VBCC/targets/ppc-warpos/lib -lvc $VBCC/targets/ppc-warpos/lib/x.o -o %s
++-l2v=vlink -bamigaehf -x -Bstatic -Cvbcc -t -nostdlib %s %s -L$VBCC/targets/ppc-warpos/lib -o %s
++-ldnodb=-s -Rshort
++-ul=-l%s
++-cf=-F%s
++-ml=1000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/configure vbcc-0.7.orig/configure
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/configure	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/configure	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,1192 @@
++#! /bin/sh
++
++# Guess values for system-dependent variables and create Makefiles.
++# Generated automatically using autoconf version 2.13 
++# Copyright (C) 1992, 93, 94, 95, 96 Free Software Foundation, Inc.
++#
++# This configure script is free software; the Free Software Foundation
++# gives unlimited permission to copy, distribute and modify it.
++
++# Defaults:
++ac_help=
++ac_default_prefix=/usr/local
++# Any additions from configure.in:
++
++# Initialize some variables set by options.
++# The variables have the same names as the options, with
++# dashes changed to underlines.
++build=NONE
++cache_file=./config.cache
++exec_prefix=NONE
++host=NONE
++no_create=
++nonopt=NONE
++no_recursion=
++prefix=NONE
++program_prefix=NONE
++program_suffix=NONE
++program_transform_name=s,x,x,
++silent=
++site=
++srcdir=
++target=NONE
++verbose=
++x_includes=NONE
++x_libraries=NONE
++bindir='${exec_prefix}/bin'
++sbindir='${exec_prefix}/sbin'
++libexecdir='${exec_prefix}/libexec'
++datadir='${prefix}/share'
++sysconfdir='${prefix}/etc'
++sharedstatedir='${prefix}/com'
++localstatedir='${prefix}/var'
++libdir='${exec_prefix}/lib'
++includedir='${prefix}/include'
++oldincludedir='/usr/include'
++infodir='${prefix}/info'
++mandir='${prefix}/man'
++
++# Initialize some other variables.
++subdirs=
++MFLAGS= MAKEFLAGS=
++SHELL=${CONFIG_SHELL-/bin/sh}
++# Maximum number of lines to put in a shell here document.
++ac_max_here_lines=12
++
++ac_prev=
++for ac_option
++do
++
++  # If the previous option needs an argument, assign it.
++  if test -n "$ac_prev"; then
++    eval "$ac_prev=\$ac_option"
++    ac_prev=
++    continue
++  fi
++
++  case "$ac_option" in
++  -*=*) ac_optarg=`echo "$ac_option" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
++  *) ac_optarg= ;;
++  esac
++
++  # Accept the important Cygnus configure options, so we can diagnose typos.
++
++  case "$ac_option" in
++
++  -bindir | --bindir | --bindi | --bind | --bin | --bi)
++    ac_prev=bindir ;;
++  -bindir=* | --bindir=* | --bindi=* | --bind=* | --bin=* | --bi=*)
++    bindir="$ac_optarg" ;;
++
++  -build | --build | --buil | --bui | --bu)
++    ac_prev=build ;;
++  -build=* | --build=* | --buil=* | --bui=* | --bu=*)
++    build="$ac_optarg" ;;
++
++  -cache-file | --cache-file | --cache-fil | --cache-fi \
++  | --cache-f | --cache- | --cache | --cach | --cac | --ca | --c)
++    ac_prev=cache_file ;;
++  -cache-file=* | --cache-file=* | --cache-fil=* | --cache-fi=* \
++  | --cache-f=* | --cache-=* | --cache=* | --cach=* | --cac=* | --ca=* | --c=*)
++    cache_file="$ac_optarg" ;;
++
++  -datadir | --datadir | --datadi | --datad | --data | --dat | --da)
++    ac_prev=datadir ;;
++  -datadir=* | --datadir=* | --datadi=* | --datad=* | --data=* | --dat=* \
++  | --da=*)
++    datadir="$ac_optarg" ;;
++
++  -disable-* | --disable-*)
++    ac_feature=`echo $ac_option|sed -e 's/-*disable-//'`
++    # Reject names that are not valid shell variable names.
++    if test -n "`echo $ac_feature| sed 's/[-a-zA-Z0-9_]//g'`"; then
++      { echo "configure: error: $ac_feature: invalid feature name" 1>&2; exit 1; }
++    fi
++    ac_feature=`echo $ac_feature| sed 's/-/_/g'`
++    eval "enable_${ac_feature}=no" ;;
++
++  -enable-* | --enable-*)
++    ac_feature=`echo $ac_option|sed -e 's/-*enable-//' -e 's/=.*//'`
++    # Reject names that are not valid shell variable names.
++    if test -n "`echo $ac_feature| sed 's/[-_a-zA-Z0-9]//g'`"; then
++      { echo "configure: error: $ac_feature: invalid feature name" 1>&2; exit 1; }
++    fi
++    ac_feature=`echo $ac_feature| sed 's/-/_/g'`
++    case "$ac_option" in
++      *=*) ;;
++      *) ac_optarg=yes ;;
++    esac
++    eval "enable_${ac_feature}='$ac_optarg'" ;;
++
++  -exec-prefix | --exec_prefix | --exec-prefix | --exec-prefi \
++  | --exec-pref | --exec-pre | --exec-pr | --exec-p | --exec- \
++  | --exec | --exe | --ex)
++    ac_prev=exec_prefix ;;
++  -exec-prefix=* | --exec_prefix=* | --exec-prefix=* | --exec-prefi=* \
++  | --exec-pref=* | --exec-pre=* | --exec-pr=* | --exec-p=* | --exec-=* \
++  | --exec=* | --exe=* | --ex=*)
++    exec_prefix="$ac_optarg" ;;
++
++  -gas | --gas | --ga | --g)
++    # Obsolete; use --with-gas.
++    with_gas=yes ;;
++
++  -help | --help | --hel | --he)
++    # Omit some internal or obsolete options to make the list less imposing.
++    # This message is too long to be a string in the A/UX 3.1 sh.
++    cat << EOF
++Usage: configure [options] [host]
++Options: [defaults in brackets after descriptions]
++Configuration:
++  --cache-file=FILE       cache test results in FILE
++  --help                  print this message
++  --no-create             do not create output files
++  --quiet, --silent       do not print \`checking...' messages
++  --version               print the version of autoconf that created configure
++Directory and file names:
++  --prefix=PREFIX         install architecture-independent files in PREFIX
++                          [$ac_default_prefix]
++  --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
++                          [same as prefix]
++  --bindir=DIR            user executables in DIR [EPREFIX/bin]
++  --sbindir=DIR           system admin executables in DIR [EPREFIX/sbin]
++  --libexecdir=DIR        program executables in DIR [EPREFIX/libexec]
++  --datadir=DIR           read-only architecture-independent data in DIR
++                          [PREFIX/share]
++  --sysconfdir=DIR        read-only single-machine data in DIR [PREFIX/etc]
++  --sharedstatedir=DIR    modifiable architecture-independent data in DIR
++                          [PREFIX/com]
++  --localstatedir=DIR     modifiable single-machine data in DIR [PREFIX/var]
++  --libdir=DIR            object code libraries in DIR [EPREFIX/lib]
++  --includedir=DIR        C header files in DIR [PREFIX/include]
++  --oldincludedir=DIR     C header files for non-gcc in DIR [/usr/include]
++  --infodir=DIR           info documentation in DIR [PREFIX/info]
++  --mandir=DIR            man documentation in DIR [PREFIX/man]
++  --srcdir=DIR            find the sources in DIR [configure dir or ..]
++  --program-prefix=PREFIX prepend PREFIX to installed program names
++  --program-suffix=SUFFIX append SUFFIX to installed program names
++  --program-transform-name=PROGRAM
++                          run sed PROGRAM on installed program names
++EOF
++    cat << EOF
++Host type:
++  --build=BUILD           configure for building on BUILD [BUILD=HOST]
++  --host=HOST             configure for HOST [guessed]
++  --target=TARGET         configure for TARGET [TARGET=HOST]
++Features and packages:
++  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
++  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
++  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
++  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
++  --x-includes=DIR        X include files are in DIR
++  --x-libraries=DIR       X library files are in DIR
++EOF
++    if test -n "$ac_help"; then
++      echo "--enable and --with options recognized:$ac_help"
++    fi
++    exit 0 ;;
++
++  -host | --host | --hos | --ho)
++    ac_prev=host ;;
++  -host=* | --host=* | --hos=* | --ho=*)
++    host="$ac_optarg" ;;
++
++  -includedir | --includedir | --includedi | --included | --include \
++  | --includ | --inclu | --incl | --inc)
++    ac_prev=includedir ;;
++  -includedir=* | --includedir=* | --includedi=* | --included=* | --include=* \
++  | --includ=* | --inclu=* | --incl=* | --inc=*)
++    includedir="$ac_optarg" ;;
++
++  -infodir | --infodir | --infodi | --infod | --info | --inf)
++    ac_prev=infodir ;;
++  -infodir=* | --infodir=* | --infodi=* | --infod=* | --info=* | --inf=*)
++    infodir="$ac_optarg" ;;
++
++  -libdir | --libdir | --libdi | --libd)
++    ac_prev=libdir ;;
++  -libdir=* | --libdir=* | --libdi=* | --libd=*)
++    libdir="$ac_optarg" ;;
++
++  -libexecdir | --libexecdir | --libexecdi | --libexecd | --libexec \
++  | --libexe | --libex | --libe)
++    ac_prev=libexecdir ;;
++  -libexecdir=* | --libexecdir=* | --libexecdi=* | --libexecd=* | --libexec=* \
++  | --libexe=* | --libex=* | --libe=*)
++    libexecdir="$ac_optarg" ;;
++
++  -localstatedir | --localstatedir | --localstatedi | --localstated \
++  | --localstate | --localstat | --localsta | --localst \
++  | --locals | --local | --loca | --loc | --lo)
++    ac_prev=localstatedir ;;
++  -localstatedir=* | --localstatedir=* | --localstatedi=* | --localstated=* \
++  | --localstate=* | --localstat=* | --localsta=* | --localst=* \
++  | --locals=* | --local=* | --loca=* | --loc=* | --lo=*)
++    localstatedir="$ac_optarg" ;;
++
++  -mandir | --mandir | --mandi | --mand | --man | --ma | --m)
++    ac_prev=mandir ;;
++  -mandir=* | --mandir=* | --mandi=* | --mand=* | --man=* | --ma=* | --m=*)
++    mandir="$ac_optarg" ;;
++
++  -nfp | --nfp | --nf)
++    # Obsolete; use --without-fp.
++    with_fp=no ;;
++
++  -no-create | --no-create | --no-creat | --no-crea | --no-cre \
++  | --no-cr | --no-c)
++    no_create=yes ;;
++
++  -no-recursion | --no-recursion | --no-recursio | --no-recursi \
++  | --no-recurs | --no-recur | --no-recu | --no-rec | --no-re | --no-r)
++    no_recursion=yes ;;
++
++  -oldincludedir | --oldincludedir | --oldincludedi | --oldincluded \
++  | --oldinclude | --oldinclud | --oldinclu | --oldincl | --oldinc \
++  | --oldin | --oldi | --old | --ol | --o)
++    ac_prev=oldincludedir ;;
++  -oldincludedir=* | --oldincludedir=* | --oldincludedi=* | --oldincluded=* \
++  | --oldinclude=* | --oldinclud=* | --oldinclu=* | --oldincl=* | --oldinc=* \
++  | --oldin=* | --oldi=* | --old=* | --ol=* | --o=*)
++    oldincludedir="$ac_optarg" ;;
++
++  -prefix | --prefix | --prefi | --pref | --pre | --pr | --p)
++    ac_prev=prefix ;;
++  -prefix=* | --prefix=* | --prefi=* | --pref=* | --pre=* | --pr=* | --p=*)
++    prefix="$ac_optarg" ;;
++
++  -program-prefix | --program-prefix | --program-prefi | --program-pref \
++  | --program-pre | --program-pr | --program-p)
++    ac_prev=program_prefix ;;
++  -program-prefix=* | --program-prefix=* | --program-prefi=* \
++  | --program-pref=* | --program-pre=* | --program-pr=* | --program-p=*)
++    program_prefix="$ac_optarg" ;;
++
++  -program-suffix | --program-suffix | --program-suffi | --program-suff \
++  | --program-suf | --program-su | --program-s)
++    ac_prev=program_suffix ;;
++  -program-suffix=* | --program-suffix=* | --program-suffi=* \
++  | --program-suff=* | --program-suf=* | --program-su=* | --program-s=*)
++    program_suffix="$ac_optarg" ;;
++
++  -program-transform-name | --program-transform-name \
++  | --program-transform-nam | --program-transform-na \
++  | --program-transform-n | --program-transform- \
++  | --program-transform | --program-transfor \
++  | --program-transfo | --program-transf \
++  | --program-trans | --program-tran \
++  | --progr-tra | --program-tr | --program-t)
++    ac_prev=program_transform_name ;;
++  -program-transform-name=* | --program-transform-name=* \
++  | --program-transform-nam=* | --program-transform-na=* \
++  | --program-transform-n=* | --program-transform-=* \
++  | --program-transform=* | --program-transfor=* \
++  | --program-transfo=* | --program-transf=* \
++  | --program-trans=* | --program-tran=* \
++  | --progr-tra=* | --program-tr=* | --program-t=*)
++    program_transform_name="$ac_optarg" ;;
++
++  -q | -quiet | --quiet | --quie | --qui | --qu | --q \
++  | -silent | --silent | --silen | --sile | --sil)
++    silent=yes ;;
++
++  -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
++    ac_prev=sbindir ;;
++  -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
++  | --sbi=* | --sb=*)
++    sbindir="$ac_optarg" ;;
++
++  -sharedstatedir | --sharedstatedir | --sharedstatedi \
++  | --sharedstated | --sharedstate | --sharedstat | --sharedsta \
++  | --sharedst | --shareds | --shared | --share | --shar \
++  | --sha | --sh)
++    ac_prev=sharedstatedir ;;
++  -sharedstatedir=* | --sharedstatedir=* | --sharedstatedi=* \
++  | --sharedstated=* | --sharedstate=* | --sharedstat=* | --sharedsta=* \
++  | --sharedst=* | --shareds=* | --shared=* | --share=* | --shar=* \
++  | --sha=* | --sh=*)
++    sharedstatedir="$ac_optarg" ;;
++
++  -site | --site | --sit)
++    ac_prev=site ;;
++  -site=* | --site=* | --sit=*)
++    site="$ac_optarg" ;;
++
++  -srcdir | --srcdir | --srcdi | --srcd | --src | --sr)
++    ac_prev=srcdir ;;
++  -srcdir=* | --srcdir=* | --srcdi=* | --srcd=* | --src=* | --sr=*)
++    srcdir="$ac_optarg" ;;
++
++  -sysconfdir | --sysconfdir | --sysconfdi | --sysconfd | --sysconf \
++  | --syscon | --sysco | --sysc | --sys | --sy)
++    ac_prev=sysconfdir ;;
++  -sysconfdir=* | --sysconfdir=* | --sysconfdi=* | --sysconfd=* | --sysconf=* \
++  | --syscon=* | --sysco=* | --sysc=* | --sys=* | --sy=*)
++    sysconfdir="$ac_optarg" ;;
++
++  -target | --target | --targe | --targ | --tar | --ta | --t)
++    ac_prev=target ;;
++  -target=* | --target=* | --targe=* | --targ=* | --tar=* | --ta=* | --t=*)
++    target="$ac_optarg" ;;
++
++  -v | -verbose | --verbose | --verbos | --verbo | --verb)
++    verbose=yes ;;
++
++  -version | --version | --versio | --versi | --vers)
++    echo "configure generated by autoconf version 2.13"
++    exit 0 ;;
++
++  -with-* | --with-*)
++    ac_package=`echo $ac_option|sed -e 's/-*with-//' -e 's/=.*//'`
++    # Reject names that are not valid shell variable names.
++    if test -n "`echo $ac_package| sed 's/[-_a-zA-Z0-9]//g'`"; then
++      { echo "configure: error: $ac_package: invalid package name" 1>&2; exit 1; }
++    fi
++    ac_package=`echo $ac_package| sed 's/-/_/g'`
++    case "$ac_option" in
++      *=*) ;;
++      *) ac_optarg=yes ;;
++    esac
++    eval "with_${ac_package}='$ac_optarg'" ;;
++
++  -without-* | --without-*)
++    ac_package=`echo $ac_option|sed -e 's/-*without-//'`
++    # Reject names that are not valid shell variable names.
++    if test -n "`echo $ac_package| sed 's/[-a-zA-Z0-9_]//g'`"; then
++      { echo "configure: error: $ac_package: invalid package name" 1>&2; exit 1; }
++    fi
++    ac_package=`echo $ac_package| sed 's/-/_/g'`
++    eval "with_${ac_package}=no" ;;
++
++  --x)
++    # Obsolete; use --with-x.
++    with_x=yes ;;
++
++  -x-includes | --x-includes | --x-include | --x-includ | --x-inclu \
++  | --x-incl | --x-inc | --x-in | --x-i)
++    ac_prev=x_includes ;;
++  -x-includes=* | --x-includes=* | --x-include=* | --x-includ=* | --x-inclu=* \
++  | --x-incl=* | --x-inc=* | --x-in=* | --x-i=*)
++    x_includes="$ac_optarg" ;;
++
++  -x-libraries | --x-libraries | --x-librarie | --x-librari \
++  | --x-librar | --x-libra | --x-libr | --x-lib | --x-li | --x-l)
++    ac_prev=x_libraries ;;
++  -x-libraries=* | --x-libraries=* | --x-librarie=* | --x-librari=* \
++  | --x-librar=* | --x-libra=* | --x-libr=* | --x-lib=* | --x-li=* | --x-l=*)
++    x_libraries="$ac_optarg" ;;
++
++  -*) { echo "configure: error: $ac_option: invalid option; use --help to show usage" 1>&2; exit 1; }
++    ;;
++
++  *)
++    if test -n "`echo $ac_option| sed 's/[-a-z0-9.]//g'`"; then
++      echo "configure: warning: $ac_option: invalid host type" 1>&2
++    fi
++    if test "x$nonopt" != xNONE; then
++      { echo "configure: error: can only configure for one host and one target at a time" 1>&2; exit 1; }
++    fi
++    nonopt="$ac_option"
++    ;;
++
++  esac
++done
++
++if test -n "$ac_prev"; then
++  { echo "configure: error: missing argument to --`echo $ac_prev | sed 's/_/-/g'`" 1>&2; exit 1; }
++fi
++
++trap 'rm -fr conftest* confdefs* core core.* *.core $ac_clean_files; exit 1' 1 2 15
++
++# File descriptor usage:
++# 0 standard input
++# 1 file creation
++# 2 errors and warnings
++# 3 some systems may open it to /dev/tty
++# 4 used on the Kubota Titan
++# 6 checking for... messages and results
++# 5 compiler messages saved in config.log
++if test "$silent" = yes; then
++  exec 6>/dev/null
++else
++  exec 6>&1
++fi
++exec 5>./config.log
++
++echo "\
++This file contains any messages produced by compilers while
++running configure, to aid debugging if configure makes a mistake.
++" 1>&5
++
++# Strip out --no-create and --no-recursion so they do not pile up.
++# Also quote any args containing shell metacharacters.
++ac_configure_args=
++for ac_arg
++do
++  case "$ac_arg" in
++  -no-create | --no-create | --no-creat | --no-crea | --no-cre \
++  | --no-cr | --no-c) ;;
++  -no-recursion | --no-recursion | --no-recursio | --no-recursi \
++  | --no-recurs | --no-recur | --no-recu | --no-rec | --no-re | --no-r) ;;
++  *" "*|*"	"*|*[\[\]\~\#\$\^\&\*\(\)\{\}\\\|\;\<\>\?]*)
++  ac_configure_args="$ac_configure_args '$ac_arg'" ;;
++  *) ac_configure_args="$ac_configure_args $ac_arg" ;;
++  esac
++done
++
++# NLS nuisances.
++# Only set these to C if already set.  These must not be set unconditionally
++# because not all systems understand e.g. LANG=C (notably SCO).
++# Fixing LC_MESSAGES prevents Solaris sh from translating var values in `set'!
++# Non-C LC_CTYPE values break the ctype check.
++if test "${LANG+set}"   = set; then LANG=C;   export LANG;   fi
++if test "${LC_ALL+set}" = set; then LC_ALL=C; export LC_ALL; fi
++if test "${LC_MESSAGES+set}" = set; then LC_MESSAGES=C; export LC_MESSAGES; fi
++if test "${LC_CTYPE+set}"    = set; then LC_CTYPE=C;    export LC_CTYPE;    fi
++
++# confdefs.h avoids OS command line length limits that DEFS can exceed.
++rm -rf conftest* confdefs.h
++# AIX cpp loses on an empty file, so make sure it contains at least a newline.
++echo > confdefs.h
++
++# A filename unique to this package, relative to the directory that
++# configure is in, which we can look for to find out if srcdir is correct.
++ac_unique_file=main.c
++
++# Find the source files, if location was not specified.
++if test -z "$srcdir"; then
++  ac_srcdir_defaulted=yes
++  # Try the directory containing this script, then its parent.
++  ac_prog=$0
++  ac_confdir=`echo $ac_prog|sed 's%/[^/][^/]*$%%'`
++  test "x$ac_confdir" = "x$ac_prog" && ac_confdir=.
++  srcdir=$ac_confdir
++  if test ! -r $srcdir/$ac_unique_file; then
++    srcdir=..
++  fi
++else
++  ac_srcdir_defaulted=no
++fi
++if test ! -r $srcdir/$ac_unique_file; then
++  if test "$ac_srcdir_defaulted" = yes; then
++    { echo "configure: error: can not find sources in $ac_confdir or .." 1>&2; exit 1; }
++  else
++    { echo "configure: error: can not find sources in $srcdir" 1>&2; exit 1; }
++  fi
++fi
++srcdir=`echo "${srcdir}" | sed 's%\([^/]\)/*$%\1%'`
++
++# Prefer explicitly selected file to automatically selected ones.
++if test -z "$CONFIG_SITE"; then
++  if test "x$prefix" != xNONE; then
++    CONFIG_SITE="$prefix/share/config.site $prefix/etc/config.site"
++  else
++    CONFIG_SITE="$ac_default_prefix/share/config.site $ac_default_prefix/etc/config.site"
++  fi
++fi
++for ac_site_file in $CONFIG_SITE; do
++  if test -r "$ac_site_file"; then
++    echo "loading site script $ac_site_file"
++    . "$ac_site_file"
++  fi
++done
++
++if test -r "$cache_file"; then
++  echo "loading cache $cache_file"
++  . $cache_file
++else
++  echo "creating cache $cache_file"
++  > $cache_file
++fi
++
++ac_ext=c
++# CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
++ac_cpp='$CPP $CPPFLAGS'
++ac_compile='${CC-cc} -c $CFLAGS $CPPFLAGS conftest.$ac_ext 1>&5'
++ac_link='${CC-cc} -o conftest${ac_exeext} $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS 1>&5'
++cross_compiling=$ac_cv_prog_cc_cross
++
++ac_exeext=
++ac_objext=o
++if (echo "testing\c"; echo 1,2,3) | grep c >/dev/null; then
++  # Stardent Vistra SVR4 grep lacks -e, says ghazi@caip.rutgers.edu.
++  if (echo -n testing; echo 1,2,3) | sed s/-n/xn/ | grep xn >/dev/null; then
++    ac_n= ac_c='
++' ac_t='	'
++  else
++    ac_n=-n ac_c= ac_t=
++  fi
++else
++  ac_n= ac_c='\c' ac_t=
++fi
++
++
++
++# Check for programs.
++
++# Extract the first word of "gcc", so it can be a program name with args.
++set dummy gcc; ac_word=$2
++echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
++echo "configure:531: checking for $ac_word" >&5
++if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++  if test -n "$CC"; then
++  ac_cv_prog_CC="$CC" # Let the user override the test.
++else
++  IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
++  ac_dummy="$PATH"
++  for ac_dir in $ac_dummy; do
++    test -z "$ac_dir" && ac_dir=.
++    if test -f $ac_dir/$ac_word; then
++      ac_cv_prog_CC="gcc"
++      break
++    fi
++  done
++  IFS="$ac_save_ifs"
++fi
++fi
++CC="$ac_cv_prog_CC"
++if test -n "$CC"; then
++  echo "$ac_t""$CC" 1>&6
++else
++  echo "$ac_t""no" 1>&6
++fi
++
++if test -z "$CC"; then
++  # Extract the first word of "cc", so it can be a program name with args.
++set dummy cc; ac_word=$2
++echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
++echo "configure:561: checking for $ac_word" >&5
++if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++  if test -n "$CC"; then
++  ac_cv_prog_CC="$CC" # Let the user override the test.
++else
++  IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
++  ac_prog_rejected=no
++  ac_dummy="$PATH"
++  for ac_dir in $ac_dummy; do
++    test -z "$ac_dir" && ac_dir=.
++    if test -f $ac_dir/$ac_word; then
++      if test "$ac_dir/$ac_word" = "/usr/ucb/cc"; then
++        ac_prog_rejected=yes
++	continue
++      fi
++      ac_cv_prog_CC="cc"
++      break
++    fi
++  done
++  IFS="$ac_save_ifs"
++if test $ac_prog_rejected = yes; then
++  # We found a bogon in the path, so make sure we never use it.
++  set dummy $ac_cv_prog_CC
++  shift
++  if test $# -gt 0; then
++    # We chose a different compiler from the bogus one.
++    # However, it has the same basename, so the bogon will be chosen
++    # first if we set CC to just the basename; use the full file name.
++    shift
++    set dummy "$ac_dir/$ac_word" "$@"
++    shift
++    ac_cv_prog_CC="$@"
++  fi
++fi
++fi
++fi
++CC="$ac_cv_prog_CC"
++if test -n "$CC"; then
++  echo "$ac_t""$CC" 1>&6
++else
++  echo "$ac_t""no" 1>&6
++fi
++
++  if test -z "$CC"; then
++    case "`uname -s`" in
++    *win32* | *WIN32*)
++      # Extract the first word of "cl", so it can be a program name with args.
++set dummy cl; ac_word=$2
++echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
++echo "configure:612: checking for $ac_word" >&5
++if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++  if test -n "$CC"; then
++  ac_cv_prog_CC="$CC" # Let the user override the test.
++else
++  IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
++  ac_dummy="$PATH"
++  for ac_dir in $ac_dummy; do
++    test -z "$ac_dir" && ac_dir=.
++    if test -f $ac_dir/$ac_word; then
++      ac_cv_prog_CC="cl"
++      break
++    fi
++  done
++  IFS="$ac_save_ifs"
++fi
++fi
++CC="$ac_cv_prog_CC"
++if test -n "$CC"; then
++  echo "$ac_t""$CC" 1>&6
++else
++  echo "$ac_t""no" 1>&6
++fi
++ ;;
++    esac
++  fi
++  test -z "$CC" && { echo "configure: error: no acceptable cc found in \$PATH" 1>&2; exit 1; }
++fi
++
++echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works""... $ac_c" 1>&6
++echo "configure:644: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works" >&5
++
++ac_ext=c
++# CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
++ac_cpp='$CPP $CPPFLAGS'
++ac_compile='${CC-cc} -c $CFLAGS $CPPFLAGS conftest.$ac_ext 1>&5'
++ac_link='${CC-cc} -o conftest${ac_exeext} $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS 1>&5'
++cross_compiling=$ac_cv_prog_cc_cross
++
++cat > conftest.$ac_ext << EOF
++
++#line 655 "configure"
++#include "confdefs.h"
++
++main(){return(0);}
++EOF
++if { (eval echo configure:660: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++  ac_cv_prog_cc_works=yes
++  # If we can't run a trivial program, we are probably using a cross compiler.
++  if (./conftest; exit) 2>/dev/null; then
++    ac_cv_prog_cc_cross=no
++  else
++    ac_cv_prog_cc_cross=yes
++  fi
++else
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  ac_cv_prog_cc_works=no
++fi
++rm -fr conftest*
++ac_ext=c
++# CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
++ac_cpp='$CPP $CPPFLAGS'
++ac_compile='${CC-cc} -c $CFLAGS $CPPFLAGS conftest.$ac_ext 1>&5'
++ac_link='${CC-cc} -o conftest${ac_exeext} $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS 1>&5'
++cross_compiling=$ac_cv_prog_cc_cross
++
++echo "$ac_t""$ac_cv_prog_cc_works" 1>&6
++if test $ac_cv_prog_cc_works = no; then
++  { echo "configure: error: installation or configuration problem: C compiler cannot create executables." 1>&2; exit 1; }
++fi
++echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler""... $ac_c" 1>&6
++echo "configure:686: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler" >&5
++echo "$ac_t""$ac_cv_prog_cc_cross" 1>&6
++cross_compiling=$ac_cv_prog_cc_cross
++
++echo $ac_n "checking whether we are using GNU C""... $ac_c" 1>&6
++echo "configure:691: checking whether we are using GNU C" >&5
++if eval "test \"`echo '$''{'ac_cv_prog_gcc'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++  cat > conftest.c <<EOF
++#ifdef __GNUC__
++  yes;
++#endif
++EOF
++if { ac_try='${CC-cc} -E conftest.c'; { (eval echo configure:700: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; } | egrep yes >/dev/null 2>&1; then
++  ac_cv_prog_gcc=yes
++else
++  ac_cv_prog_gcc=no
++fi
++fi
++
++echo "$ac_t""$ac_cv_prog_gcc" 1>&6
++
++if test $ac_cv_prog_gcc = yes; then
++  GCC=yes
++else
++  GCC=
++fi
++
++ac_test_CFLAGS="${CFLAGS+set}"
++ac_save_CFLAGS="$CFLAGS"
++CFLAGS=
++echo $ac_n "checking whether ${CC-cc} accepts -g""... $ac_c" 1>&6
++echo "configure:719: checking whether ${CC-cc} accepts -g" >&5
++if eval "test \"`echo '$''{'ac_cv_prog_cc_g'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++  echo 'void f(){}' > conftest.c
++if test -z "`${CC-cc} -g -c conftest.c 2>&1`"; then
++  ac_cv_prog_cc_g=yes
++else
++  ac_cv_prog_cc_g=no
++fi
++rm -f conftest*
++
++fi
++
++echo "$ac_t""$ac_cv_prog_cc_g" 1>&6
++if test "$ac_test_CFLAGS" = set; then
++  CFLAGS="$ac_save_CFLAGS"
++elif test $ac_cv_prog_cc_g = yes; then
++  if test "$GCC" = yes; then
++    CFLAGS="-g -O2"
++  else
++    CFLAGS="-g"
++  fi
++else
++  if test "$GCC" = yes; then
++    CFLAGS="-O2"
++  else
++    CFLAGS=
++  fi
++fi
++
++
++# Check for header files.
++
++echo $ac_n "checking how to run the C preprocessor""... $ac_c" 1>&6
++echo "configure:754: checking how to run the C preprocessor" >&5
++# On Suns, sometimes $CPP names a directory.
++if test -n "$CPP" && test -d "$CPP"; then
++  CPP=
++fi
++if test -z "$CPP"; then
++if eval "test \"`echo '$''{'ac_cv_prog_CPP'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++    # This must be in double quotes, not single quotes, because CPP may get
++  # substituted into the Makefile and "${CC-cc}" will confuse make.
++  CPP="${CC-cc} -E"
++  # On the NeXT, cc -E runs the code through the compiler's parser,
++  # not just through cpp.
++  cat > conftest.$ac_ext <<EOF
++#line 769 "configure"
++#include "confdefs.h"
++#include <assert.h>
++Syntax Error
++EOF
++ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
++{ (eval echo configure:775: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
++ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
++if test -z "$ac_err"; then
++  :
++else
++  echo "$ac_err" >&5
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  CPP="${CC-cc} -E -traditional-cpp"
++  cat > conftest.$ac_ext <<EOF
++#line 786 "configure"
++#include "confdefs.h"
++#include <assert.h>
++Syntax Error
++EOF
++ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
++{ (eval echo configure:792: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
++ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
++if test -z "$ac_err"; then
++  :
++else
++  echo "$ac_err" >&5
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  CPP="${CC-cc} -nologo -E"
++  cat > conftest.$ac_ext <<EOF
++#line 803 "configure"
++#include "confdefs.h"
++#include <assert.h>
++Syntax Error
++EOF
++ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
++{ (eval echo configure:809: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
++ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
++if test -z "$ac_err"; then
++  :
++else
++  echo "$ac_err" >&5
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  CPP=/lib/cpp
++fi
++rm -f conftest*
++fi
++rm -f conftest*
++fi
++rm -f conftest*
++  ac_cv_prog_CPP="$CPP"
++fi
++  CPP="$ac_cv_prog_CPP"
++else
++  ac_cv_prog_CPP="$CPP"
++fi
++echo "$ac_t""$CPP" 1>&6
++
++echo $ac_n "checking for ANSI C header files""... $ac_c" 1>&6
++echo "configure:834: checking for ANSI C header files" >&5
++if eval "test \"`echo '$''{'ac_cv_header_stdc'+set}'`\" = set"; then
++  echo $ac_n "(cached) $ac_c" 1>&6
++else
++  cat > conftest.$ac_ext <<EOF
++#line 839 "configure"
++#include "confdefs.h"
++#include <stdlib.h>
++#include <stdarg.h>
++#include <string.h>
++#include <float.h>
++EOF
++ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
++{ (eval echo configure:847: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
++ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
++if test -z "$ac_err"; then
++  rm -rf conftest*
++  ac_cv_header_stdc=yes
++else
++  echo "$ac_err" >&5
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -rf conftest*
++  ac_cv_header_stdc=no
++fi
++rm -f conftest*
++
++if test $ac_cv_header_stdc = yes; then
++  # SunOS 4.x string.h does not declare mem*, contrary to ANSI.
++cat > conftest.$ac_ext <<EOF
++#line 864 "configure"
++#include "confdefs.h"
++#include <string.h>
++EOF
++if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
++  egrep "memchr" >/dev/null 2>&1; then
++  :
++else
++  rm -rf conftest*
++  ac_cv_header_stdc=no
++fi
++rm -f conftest*
++
++fi
++
++if test $ac_cv_header_stdc = yes; then
++  # ISC 2.0.2 stdlib.h does not declare free, contrary to ANSI.
++cat > conftest.$ac_ext <<EOF
++#line 882 "configure"
++#include "confdefs.h"
++#include <stdlib.h>
++EOF
++if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
++  egrep "free" >/dev/null 2>&1; then
++  :
++else
++  rm -rf conftest*
++  ac_cv_header_stdc=no
++fi
++rm -f conftest*
++
++fi
++
++if test $ac_cv_header_stdc = yes; then
++  # /bin/cc in Irix-4.0.5 gets non-ANSI ctype macros unless using -ansi.
++if test "$cross_compiling" = yes; then
++  :
++else
++  cat > conftest.$ac_ext <<EOF
++#line 903 "configure"
++#include "confdefs.h"
++#include <ctype.h>
++#define ISLOWER(c) ('a' <= (c) && (c) <= 'z')
++#define TOUPPER(c) (ISLOWER(c) ? 'A' + ((c) - 'a') : (c))
++#define XOR(e, f) (((e) && !(f)) || (!(e) && (f)))
++int main () { int i; for (i = 0; i < 256; i++)
++if (XOR (islower (i), ISLOWER (i)) || toupper (i) != TOUPPER (i)) exit(2);
++exit (0); }
++
++EOF
++if { (eval echo configure:914: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext} && (./conftest; exit) 2>/dev/null
++then
++  :
++else
++  echo "configure: failed program was:" >&5
++  cat conftest.$ac_ext >&5
++  rm -fr conftest*
++  ac_cv_header_stdc=no
++fi
++rm -fr conftest*
++fi
++
++fi
++fi
++
++echo "$ac_t""$ac_cv_header_stdc" 1>&6
++if test $ac_cv_header_stdc = yes; then
++  cat >> confdefs.h <<\EOF
++#define STDC_HEADERS 1
++EOF
++
++fi
++
++
++# ...and output.
++
++trap '' 1 2 15
++cat > confcache <<\EOF
++# This file is a shell script that caches the results of configure
++# tests run on this system so they can be shared between configure
++# scripts and configure runs.  It is not useful on other systems.
++# If it contains results you don't want to keep, you may remove or edit it.
++#
++# By default, configure uses ./config.cache as the cache file,
++# creating it if it does not exist already.  You can give configure
++# the --cache-file=FILE option to use a different cache file; that is
++# what configure does when it calls configure scripts in
++# subdirectories, so they share the cache.
++# Giving --cache-file=/dev/null disables caching, for debugging configure.
++# config.status only pays attention to the cache file if you give it the
++# --recheck option to rerun configure.
++#
++EOF
++# The following way of writing the cache mishandles newlines in values,
++# but we know of no workaround that is simple, portable, and efficient.
++# So, don't put newlines in cache variables' values.
++# Ultrix sh set writes to stderr and can't be redirected directly,
++# and sets the high bit in the cache file unless we assign to the vars.
++(set) 2>&1 |
++  case `(ac_space=' '; set | grep ac_space) 2>&1` in
++  *ac_space=\ *)
++    # `set' does not quote correctly, so add quotes (double-quote substitution
++    # turns \\\\ into \\, and sed turns \\ into \).
++    sed -n \
++      -e "s/'/'\\\\''/g" \
++      -e "s/^\\([a-zA-Z0-9_]*_cv_[a-zA-Z0-9_]*\\)=\\(.*\\)/\\1=\${\\1='\\2'}/p"
++    ;;
++  *)
++    # `set' quotes correctly as required by POSIX, so do not add quotes.
++    sed -n -e 's/^\([a-zA-Z0-9_]*_cv_[a-zA-Z0-9_]*\)=\(.*\)/\1=${\1=\2}/p'
++    ;;
++  esac >> confcache
++if cmp -s $cache_file confcache; then
++  :
++else
++  if test -w $cache_file; then
++    echo "updating cache $cache_file"
++    cat confcache > $cache_file
++  else
++    echo "not updating unwritable cache $cache_file"
++  fi
++fi
++rm -f confcache
++
++trap 'rm -fr conftest* confdefs* core core.* *.core $ac_clean_files; exit 1' 1 2 15
++
++test "x$prefix" = xNONE && prefix=$ac_default_prefix
++# Let make expand exec_prefix.
++test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
++
++# Any assignment to VPATH causes Sun make to only execute
++# the first set of double-colon rules, so remove it if not needed.
++# If there is a colon in the path, we need to keep it.
++if test "x$srcdir" = x.; then
++  ac_vpsub='/^[ 	]*VPATH[ 	]*=[^:]*$/d'
++fi
++
++trap 'rm -f $CONFIG_STATUS conftest*; exit 1' 1 2 15
++
++# Transform confdefs.h into DEFS.
++# Protect against shell expansion while executing Makefile rules.
++# Protect against Makefile macro expansion.
++cat > conftest.defs <<\EOF
++s%#define \([A-Za-z_][A-Za-z0-9_]*\) *\(.*\)%-D\1=\2%g
++s%[ 	`~#$^&*(){}\\|;'"<>?]%\\&%g
++s%\[%\\&%g
++s%\]%\\&%g
++s%\$%$$%g
++EOF
++DEFS=`sed -f conftest.defs confdefs.h | tr '\012' ' '`
++rm -f conftest.defs
++
++
++# Without the "./", some shells look in PATH for config.status.
++: ${CONFIG_STATUS=./config.status}
++
++echo creating $CONFIG_STATUS
++rm -f $CONFIG_STATUS
++cat > $CONFIG_STATUS <<EOF
++#! /bin/sh
++# Generated automatically by configure.
++# Run this file to recreate the current configuration.
++# This directory was configured as follows,
++# on host `(hostname || uname -n) 2>/dev/null | sed 1q`:
++#
++# $0 $ac_configure_args
++#
++# Compiler output produced by configure, useful for debugging
++# configure, is in ./config.log if it exists.
++
++ac_cs_usage="Usage: $CONFIG_STATUS [--recheck] [--version] [--help]"
++for ac_option
++do
++  case "\$ac_option" in
++  -recheck | --recheck | --rechec | --reche | --rech | --rec | --re | --r)
++    echo "running \${CONFIG_SHELL-/bin/sh} $0 $ac_configure_args --no-create --no-recursion"
++    exec \${CONFIG_SHELL-/bin/sh} $0 $ac_configure_args --no-create --no-recursion ;;
++  -version | --version | --versio | --versi | --vers | --ver | --ve | --v)
++    echo "$CONFIG_STATUS generated by autoconf version 2.13"
++    exit 0 ;;
++  -help | --help | --hel | --he | --h)
++    echo "\$ac_cs_usage"; exit 0 ;;
++  *) echo "\$ac_cs_usage"; exit 1 ;;
++  esac
++done
++
++ac_given_srcdir=$srcdir
++
++trap 'rm -fr `echo "Makefile" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
++EOF
++cat >> $CONFIG_STATUS <<EOF
++
++# Protect against being on the right side of a sed subst in config.status.
++sed 's/%@/@@/; s/@%/@@/; s/%g\$/@g/; /@g\$/s/[\\\\&%]/\\\\&/g;
++ s/@@/%@/; s/@@/@%/; s/@g\$/%g/' > conftest.subs <<\\CEOF
++$ac_vpsub
++$extrasub
++s%@SHELL@%$SHELL%g
++s%@CFLAGS@%$CFLAGS%g
++s%@CPPFLAGS@%$CPPFLAGS%g
++s%@CXXFLAGS@%$CXXFLAGS%g
++s%@FFLAGS@%$FFLAGS%g
++s%@DEFS@%$DEFS%g
++s%@LDFLAGS@%$LDFLAGS%g
++s%@LIBS@%$LIBS%g
++s%@exec_prefix@%$exec_prefix%g
++s%@prefix@%$prefix%g
++s%@program_transform_name@%$program_transform_name%g
++s%@bindir@%$bindir%g
++s%@sbindir@%$sbindir%g
++s%@libexecdir@%$libexecdir%g
++s%@datadir@%$datadir%g
++s%@sysconfdir@%$sysconfdir%g
++s%@sharedstatedir@%$sharedstatedir%g
++s%@localstatedir@%$localstatedir%g
++s%@libdir@%$libdir%g
++s%@includedir@%$includedir%g
++s%@oldincludedir@%$oldincludedir%g
++s%@infodir@%$infodir%g
++s%@mandir@%$mandir%g
++s%@CC@%$CC%g
++s%@CPP@%$CPP%g
++
++CEOF
++EOF
++
++cat >> $CONFIG_STATUS <<\EOF
++
++# Split the substitutions into bite-sized pieces for seds with
++# small command number limits, like on Digital OSF/1 and HP-UX.
++ac_max_sed_cmds=90 # Maximum number of lines to put in a sed script.
++ac_file=1 # Number of current file.
++ac_beg=1 # First line for current file.
++ac_end=$ac_max_sed_cmds # Line after last line for current file.
++ac_more_lines=:
++ac_sed_cmds=""
++while $ac_more_lines; do
++  if test $ac_beg -gt 1; then
++    sed "1,${ac_beg}d; ${ac_end}q" conftest.subs > conftest.s$ac_file
++  else
++    sed "${ac_end}q" conftest.subs > conftest.s$ac_file
++  fi
++  if test ! -s conftest.s$ac_file; then
++    ac_more_lines=false
++    rm -f conftest.s$ac_file
++  else
++    if test -z "$ac_sed_cmds"; then
++      ac_sed_cmds="sed -f conftest.s$ac_file"
++    else
++      ac_sed_cmds="$ac_sed_cmds | sed -f conftest.s$ac_file"
++    fi
++    ac_file=`expr $ac_file + 1`
++    ac_beg=$ac_end
++    ac_end=`expr $ac_end + $ac_max_sed_cmds`
++  fi
++done
++if test -z "$ac_sed_cmds"; then
++  ac_sed_cmds=cat
++fi
++EOF
++
++cat >> $CONFIG_STATUS <<EOF
++
++CONFIG_FILES=\${CONFIG_FILES-"Makefile"}
++EOF
++cat >> $CONFIG_STATUS <<\EOF
++for ac_file in .. $CONFIG_FILES; do if test "x$ac_file" != x..; then
++  # Support "outfile[:infile[:infile...]]", defaulting infile="outfile.in".
++  case "$ac_file" in
++  *:*) ac_file_in=`echo "$ac_file"|sed 's%[^:]*:%%'`
++       ac_file=`echo "$ac_file"|sed 's%:.*%%'` ;;
++  *) ac_file_in="${ac_file}.in" ;;
++  esac
++
++  # Adjust a relative srcdir, top_srcdir, and INSTALL for subdirectories.
++
++  # Remove last slash and all that follows it.  Not all systems have dirname.
++  ac_dir=`echo $ac_file|sed 's%/[^/][^/]*$%%'`
++  if test "$ac_dir" != "$ac_file" && test "$ac_dir" != .; then
++    # The file is in a subdirectory.
++    test ! -d "$ac_dir" && mkdir "$ac_dir"
++    ac_dir_suffix="/`echo $ac_dir|sed 's%^\./%%'`"
++    # A "../" for each directory in $ac_dir_suffix.
++    ac_dots=`echo $ac_dir_suffix|sed 's%/[^/]*%../%g'`
++  else
++    ac_dir_suffix= ac_dots=
++  fi
++
++  case "$ac_given_srcdir" in
++  .)  srcdir=.
++      if test -z "$ac_dots"; then top_srcdir=.
++      else top_srcdir=`echo $ac_dots|sed 's%/$%%'`; fi ;;
++  /*) srcdir="$ac_given_srcdir$ac_dir_suffix"; top_srcdir="$ac_given_srcdir" ;;
++  *) # Relative path.
++    srcdir="$ac_dots$ac_given_srcdir$ac_dir_suffix"
++    top_srcdir="$ac_dots$ac_given_srcdir" ;;
++  esac
++
++
++  echo creating "$ac_file"
++  rm -f "$ac_file"
++  configure_input="Generated automatically from `echo $ac_file_in|sed 's%.*/%%'` by configure."
++  case "$ac_file" in
++  *Makefile*) ac_comsub="1i\\
++# $configure_input" ;;
++  *) ac_comsub= ;;
++  esac
++
++  ac_file_inputs=`echo $ac_file_in|sed -e "s%^%$ac_given_srcdir/%" -e "s%:% $ac_given_srcdir/%g"`
++  sed -e "$ac_comsub
++s%@configure_input@%$configure_input%g
++s%@srcdir@%$srcdir%g
++s%@top_srcdir@%$top_srcdir%g
++" $ac_file_inputs | (eval "$ac_sed_cmds") > $ac_file
++fi; done
++rm -f conftest.s*
++
++EOF
++cat >> $CONFIG_STATUS <<EOF
++
++EOF
++cat >> $CONFIG_STATUS <<\EOF
++
++exit 0
++EOF
++chmod +x $CONFIG_STATUS
++rm -fr confdefs* $ac_clean_files
++test "$no_create" = yes || ${CONFIG_SHELL-/bin/sh} $CONFIG_STATUS || exit 1
++
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/configure.in vbcc-0.7.orig/configure.in
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/configure.in	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/configure.in	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,19 @@
++# configure.in
++# vbcc for Unix autoconf file
++
++# Check we're in the right directory.
++
++AC_INIT(main.c)
++
++# Check for programs.
++
++AC_PROG_CC
++
++# Check for header files.
++
++AC_HEADER_STDC
++
++# ...and output.
++
++AC_OUTPUT(Makefile)
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/datatypes/datatypes.h vbcc-0.7.orig/datatypes/datatypes.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/datatypes/datatypes.h	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/datatypes/datatypes.h	Sat Sep 19 22:54:09 2015
+@@ -1,36 +1,36 @@
+ /* elementary data types currently known to vbcc */
+ 
+ /* unsigned 8bit byte */
+-"S8BU", "standard unsigned 8bit byte",
++"S8BU", 	" int8_t",
+ 
+ /* signed 8bit byte */
+-"S8BS", "standard 2-complement 8bit byte", 
++"S8BS", 	" uint8_t",
+ 
+ /* typical unsigned integers, big-endian */
+-"S16BUBE", "standard 8bit-byte-based unsigned 16bit word, big-endian",
+-"S32BUBE", "standard 8bit-byte-based unsigned 32bit word, big-endian",
+-"S64BUBE", "standard 8bit-byte-based unsigned 64bit byte, big-endian",
++"S16BUBE", 	"Buint16_t",
++"S32BUBE", 	"Buint32_t",
++"S64BUBE", 	"Buint64_t",
+ 
+ /* typical unsigned integers, little-endian */
+-"S16BULE", "standard 8bit-byte-based unsigned 16bit word, little-endian",
+-"S32BULE", "standard 8bit-byte-based unsigned 32bit word, little-endian",
+-"S64BULE", "standard 8bit-byte-based unsigned 64bit byte, little-endian",
++"S16BULE", 	"Luint16_t",
++"S32BULE", 	"Luint32_t",
++"S64BULE", 	"Luint64_t",
+ 
+ /* typical signed integers, big-endian */
+-"S16BSBE", "standard 8bit-byte-based 2-complement 16bit word, big-endian",
+-"S32BSBE", "standard 8bit-byte-based 2-complement 32bit word, big-endian",
+-"S64BSBE", "standard 8bit-byte-based 2-complement 64bit word, big-endian",
++"S16BSBE", 	"Bint16_t",
++"S32BSBE", 	"Bint32_t",
++"S64BSBE", 	"Bint64_t",
+ 
+ /* typical signed integers, little-endian */
+-"S16BSLE", "standard 8bit-byte-based 2-complement 16bit word, little-endian",
+-"S32BSLE", "standard 8bit-byte-based 2-complement 32bit word, little-endian",
+-"S64BSLE", "standard 8bit-byte-based 2-complement 64bit word, little-endian",
++"S16BSLE", 	"Lint16_t",
++"S32BSLE", 	"Lint32_t",
++"S64BSLE", 	"Lint64_t",
+ 
+ /* typical IEEE-floats, big-endian */
+-"S32BIEEEBE", "standard 8bit-byte-based 32bit IEEE floating-point, big-endian",
+-"S64BIEEEBE", "standard 8bit-byte-based 64bit IEEE floating-point, big-endian",
++"S32BIEEEBE", 	"Bfloat",
++"S64BIEEEBE", 	"Bdouble",
+ 
+ /* typical IEEE-floats, little-endian */
+-"S32BIEEELE", "standard 8bit-byte-based 32bit IEEE floating-point, little-endian",
+-"S64BIEEELE", "standard 8bit-byte-based 64bit IEEE floating-point, little-endian",
++"S32BIEEELE", 	"Lfloat",
++"S64BIEEELE", 	"Ldouble",
+ 
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/datatypes/dtgen.c vbcc-0.7.orig/datatypes/dtgen.c
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/datatypes/dtgen.c	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/datatypes/dtgen.c	Sat Sep 19 22:54:09 2015
+@@ -1,6 +1,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <stdlib.h>
++#include <stdint.h>
+ 
+ struct dtlist {char *spec,*descr;} dts[]={
+ #include "datatypes.h"
+@@ -39,6 +40,7 @@
+ char *nt[TYPECNT+1];
+ FILE *fin,*cout,*hout;
+ int crosscompiler;
++int endian;
+ 
+ void *mymalloc(size_t size)
+ {
+@@ -50,6 +52,17 @@
+   return p;
+ }
+ 
++int getendian(void)
++{
++  union {
++    int32_t i;
++    int8_t b[4];
++  } u;
++
++  u.i = 1;
++  return u.b[3] ? 'B' : 'L';
++}
++
+ int askyn(void)
+ {
+   char in[8];
+@@ -84,12 +97,13 @@
+ 	cnv[type]=-1;
+ 	return 1;
+       }else{
+-	printf("Does your system/compiler support a type implemented as\n%s?\n",dts[i].descr);
+-	if(askyn()){
+-	  dt[type]=i;
+-	  nt[type]=asktype();
+-	  have[i]=type;
+-	  cnv[type]=-1;
++	int e = dts[i].descr[0];
++	if ((e == ' ') || (e == endian))
++	{
++	  dt[type] = i;
++	  nt[type] = dts[i].descr + 1;
++	  have[i] = type;
++	  cnv[type] = -1;
+ 	  return 1;
+ 	}else{
+ 	  have[i]=-2;
+@@ -111,12 +125,13 @@
+ 	    cnv[type]=j;
+ 	    return 2;
+ 	  }else{
+-	    printf("Does your system/compiler support a type implemented as\n%s?\n",dts[i].descr);
+-	    if(askyn()){
+-	      dt[type]=i;
+-	      nt[type]=asktype();
+-	      have[i]=type;
+-	      cnv[type]=j;
++	    int e = dts[i].descr[0];
++	    if ((e == ' ') || (e == endian))
++	    {
++	      dt[type] = i;
++	      nt[type] = dts[i].descr + 1;
++	      have[i] = type;
++	      cnv[type] = j;
+ 	      return 2;
+ 	    }else{
+ 	      have[i]=-2;
+@@ -179,8 +194,10 @@
+   if(!hout){ printf("Could not open <%s> for output!\n",argv[2]);exit(EXIT_FAILURE);}
+   cout=fopen(argv[3],"w");
+   if(!hout){ printf("Could not open <%s> for output!\n",argv[3]);exit(EXIT_FAILURE);}
+-  printf("Are you building a cross-compiler?\n");
+-  crosscompiler=askyn();
++//  printf("Are you building a cross-compiler?\n");
++//  crosscompiler=askyn();
++  crosscompiler = 1;
++  endian = getendian();
+   for(i=1;i<=TYPECNT;i++){
+     fgets(spec,127,fin);
+ /*     printf("Specs for z%s:\n%s\n",typen[i],spec); */
+@@ -198,6 +215,7 @@
+     }
+   }
+   fprintf(hout,"\n\n/* Machine generated file. DON'T TOUCH ME! */\n\n\n");
++  fprintf(hout,"#include <stdint.h>\n");
+   fprintf(cout,"\n\n/* Machine generated file. DON'T TOUCH ME! */\n\n\n");
+   fprintf(cout,"#include \"dt.h\"\n\n");
+   for(i=1;i<=TYPECNT;i++){
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/debian/README.Debian vbcc-0.7.orig/debian/README.Debian
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/debian/README.Debian	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/debian/README.Debian	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,11 @@
++vbcc for Debian
++---------------
++
++This is a Debianisation of Volker Barthelmann's vbcc compiler. The original
++upstream distribution site is:
++
++	http://www.compilers.de/vbcc/
++
++Note that this is version 0.7; the latest upstream version is 0.8.
++
++ -- David Given <dg@cowlark.com>, Fri,  2 Nov 2001 20:59:17 +0000
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/debian/changelog vbcc-0.7.orig/debian/changelog
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/debian/changelog	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/debian/changelog	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,22 @@
++vbcc (0.7-3) unstable; urgency=high
++
++  * Moved vc.1 from /usr/man to /usr/share/man to comply with the filesystem
++    standard. So *that's* why half my man pages are in /usr/share...
++
++ -- David Given <dg@cowlark.com>  Mon, 14 Jan 2002 12:11:39 +0000
++
++vbcc (0.7-2) unstable; urgency=high
++
++  * Danger, Will Robinson! Uninitialised variable! Fails horribly on OS X!
++
++ -- David Given <dg@cowlark.com>  Sat, 17 Nov 2001 23:39:17 +0000
++
++vbcc (0.7-1) unstable; urgency=low
++
++  * Initial Release.
++
++ -- David Given <dg@cowlark.com>  Fri,  2 Nov 2001 20:59:17 +0000
++
++Local variables:
++mode: debian-changelog
++End:
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/debian/control vbcc-0.7.orig/debian/control
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/debian/control	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/debian/control	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,18 @@
++Source: vbcc
++Section: devel
++Priority: optional
++Maintainer: David Given <dg@cowlark.com>
++Build-Depends: debhelper (>> 3.0.0)
++Standards-Version: 3.5.2
++
++Package: vbcc
++Architecture: any
++Depends: ${shlibs:Depends}
++Description: Lightweight retargetable optimising C compiler
++ vbcc is a free portable and retargetable ANSI C compiler which can generate
++ code for a wide variety of processors. It can perform any of a large range
++ of optimisations on the emitted code; in some areas it can produce better
++ code than gcc.
++ .
++ This version contains code generators for: alpha, c16x, i386, m68k, PowerPC,
++ and Infocom's Z-machine.
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/debian/copyright vbcc-0.7.orig/debian/copyright
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/debian/copyright	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/debian/copyright	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,98 @@
++This package was debianized by David Given <dg@hilfy> on
++Fri,  2 Nov 2001 20:59:17 +0000.
++
++It was downloaded from http://www.compilers.de
++
++Upstream Author(s): Volker Barthelmann
++
++Copyright:
++
++vbcc compiler
++
++    vbcc is (c) in 1995-99 by Volker Barthelmann. The builtin preprocessor
++    (consisting of the files preproc.c and vbpp.h) is written and (c) by
++    Thorsten Schaaps. All other code is (c) by Volker Barthelmann.
++    vbcc may be freely redistributed as long as no modifications are made
++    and nothing is charged for it.
++    Non-commercial usage of vbcc is allowed without any restrictions.
++    Commercial usage needs my written consent.
++
++    Sending me money, gifts, postcards etc. would be very nice and may
++    encourage further development of vbcc, but is not legally or morally
++    necessary to use vbcc.
++
++vcpp preprocessor
++
++    The authors of this software are Christopher W. Fraser and
++    David R. Hanson.
++
++    Copyright (c) 1991,1992,1993,1994,1995 by AT&T, Christopher W. Fraser,
++    and David R. Hanson. All Rights Reserved.
++
++    Permission to use, copy, modify, and distribute this software for any
++    purpose, subject to the provisions described below, without fee is
++    hereby granted, provided that this entire notice is included in all
++    copies of any software that is or includes a copy or modification of
++    this software and in all copies of the supporting documentation for
++    such software.
++
++    THIS SOFTWARE IS BEING PROVIDED "AS IS", WITHOUT ANY EXPRESS OR IMPLIED
++    WARRANTY. IN PARTICULAR, NEITHER THE AUTHORS NOR AT&T MAKE ANY
++    REPRESENTATION OR WARRANTY OF ANY KIND CONCERNING THE MERCHANTABILITY
++    OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
++
++
++    lcc is not public-domain software, shareware, and it is not protected
++    by a `copyleft' agreement, like the code from the Free Software
++    Foundation.
++
++    lcc is available free for your personal research and instructional use
++    under the `fair use' provisions of the copyright law. You may,
++    however, redistribute the lcc in whole or in part provided you
++    acknowledge its source and include this COPYRIGHT file.
++
++    You may not sell lcc or any product derived from it in which it is a
++    significant part of the value of the product. Using the lcc front end
++    to build a C syntax checker is an example of this kind of product.
++
++    You may use parts of lcc in products as long as you charge for only
++    those components that are entirely your own and you acknowledge the use
++    of lcc clearly in all product documentation and distribution media. You
++    must state clearly that your product uses or is based on parts of lcc
++    and that lcc is available free of charge. You must also request that
++    bug reports on your product be reported to you. Using the lcc front
++    end to build a C compiler for the Motorola 88000 chip and charging for
++    and distributing only the 88000 code generator is an example of this
++    kind of product.
++
++    Using parts of lcc in other products is more problematic. For example,
++    using parts of lcc in a C++ compiler could save substantial time and
++    effort and therefore contribute significantly to the profitability of
++    the product. This kind of use, or any use where others stand to make a
++    profit from what is primarily our work, is subject to negotiation.
++
++Debianisation code and Z-machine code generator
++
++    This code is licensed under the MIT open source license.
++
++    Copyright (c) 2001, David Given
++    All rights reserved.
++
++    Permission is hereby granted, free of charge, to any person obtaining a
++    copy of this software and associated documentation files (the "Software"),
++    to deal in the Software without restriction, including without limitation
++    the rights to use, copy, modify, merge, publish, distribute, sublicense,
++    and/or sell copies of the Software, and to permit persons to whom the
++    Software is furnished to do so, subject to the following conditions:
++
++    The above copyright notice and this permission notice shall be included in
++    all copies or substantial portions of the Software.
++
++    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++    DEALINGS IN THE SOFTWARE.
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/debian/dirs vbcc-0.7.orig/debian/dirs
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/debian/dirs	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/debian/dirs	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1 @@
++usr/bin
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/debian/rules vbcc-0.7.orig/debian/rules
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/debian/rules	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/debian/rules	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,93 @@
++#!/usr/bin/make -f
++# Sample debian/rules that uses debhelper.
++# GNU copyright 1997 to 1999 by Joey Hess.
++
++# Uncomment this to turn on verbose mode.
++#export DH_VERBOSE=1
++
++# This is the debhelper compatability version to use.
++export DH_COMPAT=3
++
++configure: configure-stamp
++configure-stamp:
++	dh_testdir
++
++	autoconf
++	./configure --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info
++
++	touch configure-stamp
++
++build: configure-stamp build-stamp
++build-stamp:
++	dh_testdir
++
++	mkdir -p bin
++	$(MAKE)
++
++	touch build-stamp
++
++clean: configure
++	dh_testdir
++	dh_testroot
++
++	if [ -f Makefile ]; then $(MAKE) clean; fi
++	rm -f Makefile config.cache config.log config.status
++	rm -f build-stamp configure-stamp
++
++	dh_clean
++
++install: build
++	dh_testdir
++	dh_testroot
++	dh_clean -k
++	dh_installdirs
++
++	mkdir -p debian/tmp/usr/bin
++	mkdir -p debian/tmp/usr/lib/vbcc
++	cp bin/*			debian/tmp/usr/lib/vbcc
++	mv debian/tmp/usr/lib/vbcc/vc	debian/tmp/usr/bin
++
++	mkdir -p debian/tmp/usr/share/man/man1
++	cp vc.1				debian/tmp/usr/share/man/man1
++
++	cp -r share			debian/tmp/usr
++
++
++# Build architecture-independent files here.
++binary-indep: build install
++# We have nothing to do by default.
++
++# Build architecture-dependent files here.
++binary-arch: build install
++	dh_testdir
++	dh_testroot
++	dh_movefiles
++
++#	dh_installdebconf	
++	dh_installdocs
++	dh_installexamples
++	dh_installmenu
++#	dh_installlogrotate
++#	dh_installemacsen
++#	dh_installpam
++#	dh_installmime
++#	dh_installinit
++	dh_installcron
++	dh_installman
++	dh_installinfo
++#	dh_undocumented
++	dh_installchangelogs 
++	dh_link
++	dh_strip
++	dh_compress
++	dh_fixperms
++#	dh_makeshlibs
++	dh_installdeb
++#	dh_perl
++	dh_shlibdeps
++	dh_gencontrol
++	dh_md5sums
++	dh_builddeb
++
++binary: binary-indep binary-arch
++.PHONY: build clean binary-indep binary-arch binary install configure
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/debian/vbcc.docs vbcc-0.7.orig/debian/vbcc.docs
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/debian/vbcc.docs	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/debian/vbcc.docs	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1 @@
++doc
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/debian/vbcc.files vbcc-0.7.orig/debian/vbcc.files
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/debian/vbcc.files	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/debian/vbcc.files	Sat Sep 19 22:54:09 2015
+@@ -0,0 +1,4 @@
++/usr/bin
++/usr/lib/vbcc
++/usr/share/vbcc
++/usr/share/man
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/doc/vbccz.doc vbcc-0.7.orig/doc/vbccz.doc
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/doc/vbccz.doc	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/doc/vbccz.doc	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,205 @@
++vbcc - C compiler (c) in 1995-2001 by Volker Barthelmann
++
++
++INTRODUCTION
++
++    vbcc is a free portable and retargetable ANSI C compiler.
++    It is clearly split into a target independant and a target dependant
++    part and supports emulating datatypes of the target machine on any
++    other machine so that it is possible to e.g. make a crosscompiler for
++    a 64bit machine on a 32bit machine.
++    This document only deals with the target dependant parts of the
++    Infocom Z-machine code generator.
++
++    This is a pre-alpha version!
++
++LEGAL
++
++    vbcc is (c) in 1995-99 by Volker Barthelmann. All code is written by me
++    and may be freely redistributed as long as no modifications are made
++    and nothing is charged for it.
++    Non-commercial usage of vbcc is allowed without any restrictions.
++    Commercial usage needs my written consent.
++
++    Sending me money, gifts, postcards etc. would of course be very nice
++    and may encourage further development of vbcc, but is not legally or
++    morally necessary to use vbcc.
++
++
++    The Z-machine code generator is licensed under the MIT open source license.
++
++    Copyright (c) 2001, David Given
++    All rights reserved.
++
++    Permission is hereby granted, free of charge, to any person obtaining a
++    copy of this software and associated documentation files (the "Software"),
++    to deal in the Software without restriction, including without limitation
++    the rights to use, copy, modify, merge, publish, distribute, sublicense,
++    and/or sell copies of the Software, and to permit persons to whom the
++    Software is furnished to do so, subject to the following conditions:
++
++    The above copyright notice and this permission notice shall be included in
++    all copies or substantial portions of the Software.
++
++    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++    DEALINGS IN THE SOFTWARE.
++
++
++ADDITIONAL OPTIONS FOR THIS VERSION
++
++    -module-name=<name>
++
++    		Tells the code generator the C module name to use when emitting
++		code. This is used to generate identifiers for statics and
++		labels. If a program is made up of multiple modules, each
++		module should have a unique name.
++
++		If omitted, the compiled module must not be linked with any
++		other modules; i.e., omitting the module name is only suitable
++		for programs made up of a single source file. In this case the
++		BSS initialisation function is called __init_vars().
++
++    -trace-calls
++
++    		Emit additional code that prints the function name into the
++		function prologue. This can be useful for tracing through code.
++
++    -trace-all
++
++    		Emit additional code that prints vbcc's internal representation
++		of each instruction before emitting the Z-machine code for that
++		instruction. This can be useful for tracing, but is primarily
++		used to debug the code generator.
++
++    -safe-branches
++
++		Attempts to work around an Inform bug that causes relative
++		branches in very long source functions to be incorrectly
++		generated.  (The Z-machine has an upper limit to the offset
++		that can be put in a relative branch, but Inform does not test
++		for this. If that limit is reached, Inform will happily
++		generate incorrect code.)
++
++    -comment-ic
++    -comment-misc
++
++    		Emit various comments in the output assembly that shows what
++		the code generator is doing. These is completely useless to
++		anyone who isn't debugging the code generator.
++		
++SOME INTERNALS
++
++    This code generator produces files suitable for assembly with the Inform
++    Z-machine compiler.
++
++    It implements:
++
++    	8-bit signed and unsigned chars
++	16-bit signed and unsigned shorts and ints
++	32-bit signed and unsigned longs
++	No floating point (may be included at a future date)
++
++    32-bit arithmetic is emulated and may be very slow.
++
++    All the standard ANSI C semantics are implemented, or at least should be.
++    This includes but is not limited to static data, BSS, stack allocation,
++    passing and returning structures to functions, varargs, etc.
++
++    The compiled code expects to be linked and run in a particular manner.
++    Inform does not use a conventional link stage, which means that certain
++    contortions must be done to make the vbcc compiled code to work. A wrapper
++    Inform source file is needed that references the vbcc compiled code, sets
++    up the BSS, and runs the C. For example, say we have a C source file that
++    provides a function main(), called helloworld.c. We would need the following
++    Inform file:
++
++    	#include "/usr/share/vbcc/arch/runtime.s"
++	#include "helloworld.o"
++
++	[ Initialise;
++		__init_vars_helloworld();
++		cinvoke(_main);
++	];
++
++    The C file world be compiled as follows:
++
++    	vc +z -module-name=helloworld -c helloworld.c
++
++    And then the Inform file:
++
++    	inform helloworld.inf
++
++    Each module is provided with a function that sets up that module's BSS.
++    This is called __init_vars_<modulename>, and must be called prior to
++    running any code in that module.
++
++    /usr/share/vbcc/arch/runtime.s is provided with the code generator (if you
++    are not using a binary package, it will be in share/vbcc/arch/runtime.s in
++    the source directory), and contains helper functions for working around
++    Inform bugs, providing extra functionality (the Z-machine has no xor
++    instruction), and unsigned and 32-bit arithmetic helper functions. It also
++    sets up a 2kB call stack.
++
++    The cinvoke() Inform function should be used to call C code from Inform
++    code. It sets up the stack and forwards parameters on. The return value of
++    the C function is then passed back out of cinvoke(). Note that 32-bit
++    parameters are not supported in cinvoke(), and cinvoke() is not reentrant
++    (it must not be called from Inform code called from C code called with
++    cinvoke()).
++
++    No libc is provided with the compiler. If you require a libc, the game
++    _Silicon Castles_ comes with an extremely minimalist libc that may be
++    useful.
++
++    The Z-machine is not implemented as a particularly normal register-based
++    processor. As a result, the code generator is a bit odd in places. The
++    Z-machine's local variables are used in place of registers. These are
++    referred to here as xp and r0..r12.
++
++    xp is the C stack pointer. The Z-machine's own stack is not memory mapped
++    and so is useless from the C point of view. As a result, the C stack is
++    held in main memory; it is set up by the cinvoke() function. It should be
++    borne in mind that this means that both stacks will need adjusting for a
++    longjmp() implementation.
++
++    r0 to r5 are used for parameter passing when calling functions, but at all
++    other times all the registers are used for scratch space. The Z-machine
++    automatically saves all the locals when making procedure calls, so
++    parameters are returned on the Z-machine stack.
++    
++STDARG
++
++    #ifndef __STDARG_H
++    #define __STDARG_H
++
++    #ifdef __Z__
++    typedef char* va_list;
++    extern va_list __va_start; /* magic */
++
++    #define va_start(ap, lastarg) \
++    	((ap) = __va_start)
++    #define va_arg(ap, type) \
++    	(((ap) += (sizeof(type)<sizeof(int)) ? sizeof(int) : sizeof(type)), \
++    	((type*)ap)[-1])
++    #define va_end(ap) ((ap) = 0)
++    #endif
++
++    #endif /* __STDARG_H */
++
++KNOWN PROBLEMS
++
++    I'm sure there are some in the compiler, but nothing's bitten me yet. The
++    main problems are caused by the fact that vbcc generates really weird
++    Z-machine code that stresses Inform and the interpreters in ways that have
++    never been tested before. I've found at least two major interpreter bugs;
++    some versions of nitfol think that -32760 > 32760, and some versions of Zip
++    think that $FF00 asr 8 != $FFFF. There are some Inform bugs that generate
++    bogus code, too.
++
++David Given						dg@cowlark.com
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/frontend/vc.c vbcc-0.7.orig/frontend/vc.c
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/frontend/vc.c	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/frontend/vc.c	Sat Sep 19 22:54:10 2015
+@@ -64,14 +64,17 @@
+ const char *config_name="vc.config";
+ const char *search_dirs[]={"","ENV:","VBCC:"};
+ char *ul="vlib:%s.lib";
++#define ASM_SUFFIX ".asm"
+ #elif defined(WINTEL)
+ const char *config_name="vc.cfg";
+ const char *search_dirs[]={"","%VCCFG%\\"};
+ char *ul="-l%s";
++#define ASM_SUFFIX ".asm"
+ #else
+-const char *config_name="vc.config";
+-const char *search_dirs[]={"","~/","/etc/"};
++const char *config_name="i386";
++const char *search_dirs[]={"/usr/share/vbcc/conf/", ""};
+ char *ul="-l%s";
++#define ASM_SUFFIX ".s"
+ #endif
+ 
+ /*  String fuer die Default libraries   */
+@@ -345,7 +348,7 @@
+                 }
+ 		/* MUST come before CCSRC-handling! */
+                 if(j==SCSRC){
+-                    file=add_suffix(file,".asm");
++                    file=add_suffix(file,ASM_SUFFIX);
+                     if(tfl==ASSRC&&(flags&OUTPUTSET)) file=destname;
+                     sprintf(command,scname,oldfile,file);
+                     if(tfl!=ASSRC) add_name(file,&first_scratch,&last_scratch);
+@@ -355,7 +358,7 @@
+ 		      file=add_suffix(file,".scs");
+ 		    }else{
+ 		      if(++j==tfl-1) file=namebuf;
+-		      file=add_suffix(file,".asm");
++		      file=add_suffix(file,ASM_SUFFIX);
+ 		    }
+                     if(tfl==j+1&&(flags&OUTPUTSET)) file=destname;
+                     sprintf(command,ccname,oldfile,file,options,opt);
+@@ -428,6 +431,7 @@
+     }
+     if(!(flags&KEEPSCRATCH)) del_scratch(first_scratch);
+     raus(0);
++	return;
+ }
+ 
+ int typ(char *p)
+@@ -437,7 +441,7 @@
+     if(!strcmp(p,".c")) return PPSRC;
+     if(!strcmp(p,".i")) return CCSRC;
+     if(!strcmp(p,".s")) return ASSRC;
+-    if(!strcmp(p,".asm")) return ASSRC;
++    if(!strcmp(p,ASM_SUFFIX)) return ASSRC;
+     if(!strcmp(p,".scs")) return SCSRC;
+     if(!strcmp(p,".o")) return OBJ;
+     if(!strcmp(p,".obj")) return OBJ;
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/i386 vbcc-0.7.orig/i386
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/i386	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/i386	Sat Sep 19 22:54:45 2015
+@@ -0,0 +1,7 @@
++-pp=/usr/glenda/vbcc/vbcc-0.7.orig/bin/vcpp -I/usr/glenda/vbcc/vbcc-0.7.orig/share/vbcc/arch/z/include -+ -D__Z__ %s %s %s
++-ppv=/usr/glenda/vbcc/vbcc-0.7.orig/bin/vcpp -I/usr/glenda/vbcc/vbcc-0.7.orig/share/vbcc/arch/z/include -+ -D__Z__ %s %s %s
++-cc=/usr/glenda/vbcc/vbcc-0.7.orig/bin/vbccz -quiet %s -o=%s %s -O=%ld
++-ccv=/usr/glenda/vbcc/vbcc-0.7.orig/bin/vbccz %s -o=%s %s -O=%ld
++-as=cp %s %s
++-ld=echo "Don't know how to link Z-machine code" 1>&2; exit 0
++-rm=echo %s
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/ic.c vbcc-0.7.orig/ic.c
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/ic.c	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/ic.c	Sat Sep 19 22:54:10 2015
+@@ -8,6 +8,8 @@
+ 
+ int do_arith(np,struct IC *,np,struct obj *);
+ 
++static void handle_reglist(struct regargs_list *,struct obj *);
++
+ void gen_test(struct obj *o,int t,int branch,int label)
+ /*  Generiert ein test o, branch label und passt auf, dass      */
+ /*  kein TEST const generiert wird.                             */
+@@ -732,13 +734,20 @@
+               ptyp.next=p->ntyp;
+               reg=reg_parm(&reg_handle,&ptyp,0);
+               if(!reg) ierror(0);
+-              sz=push_args(p->alist,p->left->ntyp->next->exact,0,&rl,&reg_handle,&ret_obj,reg);
++              sz=push_args(p->alist,p->left->ntyp->next->exact,0,&rl,&reg_handle,&ret_obj,p->ntyp,reg);
++	      if(optflags&2)
++		handle_reglist(rl,&ret_obj);	      
+             }else{
+-              sz=push_args(p->alist,p->left->ntyp->next->exact,0,&rl,&reg_handle,0,-1);
++	      struct reg_handle reg_handle=empty_reg_handle;
++              sz=push_args(p->alist,p->left->ntyp->next->exact,0,&rl,&reg_handle,0,0,-1);
++	      if(optflags&2)
++		handle_reglist(rl,0);
+             }
+         }
+ #else
+         sz=push_args(p->alist,p->left->ntyp->next->exact,0,&rl);
++	if(optflags&2)
++	  handle_reglist(rl,0);
+ #endif
+         if(!r) gen_IC(p->left,0,0);
+         if(!(p->left->o.flags&DREFOBJ)){
+@@ -1068,8 +1077,45 @@
+     free(new);
+     p->o.flags=0;
+ }
++
++static void handle_reglist(struct regargs_list *nrl,struct obj *radr)
++{
++  struct IC *new;
++  /*  Letztes Argument; jetzt in Register laden.  */
++#ifdef HAVE_REGPARMS
++  int didradr=0;
++#endif
++  while(nrl){
++    new=mymalloc(ICS);
++    new->code=ASSIGN;
++    new->typf=nrl->v->vtyp->flags|VOLATILE;
++    new->q1.flags=VAR;
++    new->q1.v=nrl->v;
++    new->q1.val.vlong=l2zl(0L);
++    new->q2.flags=0;
++    new->q2.val.vlong=szof(nrl->v->vtyp);
++    new->z.flags=VAR;
++    new->z.val.vlong=l2zl(0L);
++    new->z.v=add_var(empty,clone_typ(nrl->v->vtyp),AUTO,0);
++    new->z.v->reg=nrl->reg;
++    nrl->v=new->z.v;
++    add_IC(new);
++    
+ #ifdef HAVE_REGPARMS
+-zlong push_args(struct argument_list *al,struct struct_declaration *sd,int n,struct regargs_list **rl,struct reg_handle *reg_handle,struct obj *radr,int rreg)
++    if(radr&&!didradr){
++      didradr=1;
++    }else{
++#endif
++      nrl->al->pushic=new;
++#ifdef HAVE_REGPARMS
++    }
++#endif
++    nrl=nrl->next;
++  }
++}
++
++#ifdef HAVE_REGPARMS
++zlong push_args(struct argument_list *al,struct struct_declaration *sd,int n,struct regargs_list **rl,struct reg_handle *reg_handle,struct obj *radr,struct Typ *rtype,int rreg)
+ #else
+ zlong push_args(struct argument_list *al,struct struct_declaration *sd,int n,struct regargs_list **rl)
+ #endif
+@@ -1077,7 +1123,7 @@
+ /*  auf den Stack. Es wird Integer-Erweiterung vorgenommen und float wird   */
+ /*  nach double konvertiert, falls kein Prototype da ist.                   */
+ {
+-    int t,reg,regpush,evaluated=0;
++  int t,reg,regpush,evaluated=0;struct Typ *ft;
+     struct IC *new;struct regargs_list *nrl;zlong sz,of;struct obj *arg;
+ #ifdef HAVE_REGPARMS
+     int stdreg;
+@@ -1105,16 +1151,21 @@
+       if(!al->arg) ierror(0);
+       if(!sd) ierror(0);
+       if(n<sd->count){
+-        t=(*sd->sl)[n].styp->flags;sz=szof((*sd->sl)[n].styp);
++        ft=clone_typ((*sd->sl)[n].styp);sz=szof(ft);
++	t=ft->flags;
+         reg=(*sd->sl)[n].reg;
+       }else{
+-        t=al->arg->ntyp->flags;sz=szof(al->arg->ntyp);
++        ft=clone_typ(al->arg->ntyp);sz=szof(ft);
++	t=ft->flags;
+       }
+-      if((t&NQ)>=CHAR&&(t&NQ)<=LONG) {t=int_erw(t);sz=sizetab[t&NQ];}
++      if((t&NQ)>=CHAR&&(t&NQ)<=LONG) {t=int_erw(t);ft->flags=t;sz=sizetab[t&NQ];}
+       if((t&NQ)==FLOAT&&n>=sd->count) {t=DOUBLE;sz=sizetab[t];}
+ #ifdef HAVE_REGPARMS
+     }else{
+-      t=POINTER;sz=sizetab[POINTER];
++      ft=mymalloc(TYPS);
++      ft->flags=t=POINTER;
++      ft->next=clone_typ(rtype);
++      sz=sizetab[t];
+     }
+ #endif
+     if(reg<0) {reg=-reg;regpush=1;} else regpush=0;
+@@ -1127,6 +1178,7 @@
+         convert(al->arg,t&NU);
+         evaluated=1;
+         new->q1=al->arg->o;
++	al->pushic=new;
+       }else
+         new->q1=*radr;
+       /*  Parameteruebergabe ueber Stack. */
+@@ -1152,9 +1204,9 @@
+ #endif
+ #ifdef HAVE_REGPARMS
+     if(radr){
+-      if(al) of=push_args(al,sd,0,rl,reg_handle,0,0); else of=l2zl(0L);
++      if(al) of=push_args(al,sd,0,rl,reg_handle,0,0,0); else of=l2zl(0L);
+     }else{
+-      if(al->next) of=push_args(al->next,sd,n+1,rl,reg_handle,0,0); else of=l2zl(0L);
++      if(al->next) of=push_args(al->next,sd,n+1,rl,reg_handle,0,0,0); else of=l2zl(0L);
+     }
+ #else
+     if(al->next) of=push_args(al->next,sd,n+1,rl); else of=l2zl(0L);
+@@ -1171,7 +1223,7 @@
+     }else{
+       if(!evaluated){
+         gen_IC(al->arg,0,0);
+-        convert(al->arg,t&NU);
++        convert(al->arg,t);
+         evaluated=1;
+       }
+       arg=&al->arg->o;
+@@ -1195,6 +1247,7 @@
+         new->q2.flags=new->z.flags=0;
+         new->q2.val.vlong=sz;
+         add_IC(new);
++	al->pushic=new;
+         if(!regpush) return(zladd(of,sz));
+     }
+ #endif
+@@ -1225,31 +1278,8 @@
+             nrl->next=*rl;
+             nrl->reg=reg;
+             nrl->v=v;
++	    nrl->al=al;
+             *rl=nrl;
+-#ifdef HAVE_REGPARMS
+-            if(radr||(!radr&&rreg==-1))
+-#else
+-            if(n==0)
+-#endif
+-            {
+-            /*  Letztes Argument; jetzt in Register laden.  */
+-                for(;nrl;nrl=nrl->next){
+-                    new=mymalloc(ICS);
+-                    new->code=ASSIGN;
+-                    new->typf=nrl->v->vtyp->flags|VOLATILE;
+-                    new->q1.flags=VAR;
+-                    new->q1.v=nrl->v;
+-                    new->q1.val.vlong=l2zl(0L);
+-                    new->q2.flags=0;
+-                    new->q2.val.vlong=szof(nrl->v->vtyp);
+-                    new->z.flags=VAR;
+-                    new->z.val.vlong=l2zl(0L);
+-                    new->z.v=add_var(empty,clone_typ(nrl->v->vtyp),AUTO,0);
+-                    new->z.v->reg=nrl->reg;
+-                    nrl->v=new->z.v;
+-                    add_IC(new);
+-                }
+-            }
+             return(of);
+         }else{
+         /*  Nicht-optimierende Version. */
+@@ -1281,6 +1311,13 @@
+                 }else regs[reg]|=32;
+             }
+             new=mymalloc(ICS);
++#ifdef HAVE_REGPARMS
++	    if(!radr){
++	      al->pushic=new;
++	    }
++#else
++	    al->pushic=new;
++#endif
+             new->code=ASSIGN;
+             new->typf=t;
+             new->q1=*arg;
+@@ -1309,6 +1346,7 @@
+             return(of);
+         }
+     }
++	return;
+ }
+ 
+ void convert(np p,int f)
+@@ -1520,6 +1558,9 @@
+         new->q1=p->left->o;
+         /*  kleinere Typen als MINADDI2P erst in diesen wandeln */
+         if((new->typf&NQ)<MINADDI2P){convert(p->right,/*UNSIGNED|*/MINADDI2P);new->typf=/*UNSIGNED|*/MINADDI2P;}
++#ifdef MAXADDI2P
++        if((new->typf&NQ)>MAXADDI2P){convert(p->right,/*UNSIGNED|*/MAXADDI2P);new->typf=/*UNSIGNED|*/MAXADDI2P;}
++#endif
+         new->q2=p->right->o;
+         if(!dest&&(p->left->o.flags&SCRATCH)&&regok(new->q1.reg,POINTER,p->left->ntyp->next->flags&NU)){
+             new->z=p->left->o;
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/dt.c vbcc-0.7.orig/machines/z/dt.c
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/dt.c	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/machines/z/dt.c	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,7 @@
++
++
++/* Machine generated file. DON'T TOUCH ME! */
++
++
++#include "dt.h"
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/dt.h vbcc-0.7.orig/machines/z/dt.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/dt.h	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/machines/z/dt.h	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,81 @@
++
++
++/* Machine generated file. DON'T TOUCH ME! */
++
++
++#include <stdint.h>
++typedef uint8_t zchar;
++typedef int8_t zuchar;
++typedef int16_t zshort;
++typedef uint16_t zushort;
++typedef int16_t zint;
++typedef uint16_t zuint;
++typedef int32_t zlong;
++typedef uint32_t zulong;
++typedef float zfloat;
++typedef double zdouble;
++typedef uint16_t zpointer;
++#define zc2zl(x) ((int32_t)(x))
++#define zs2zl(x) ((int32_t)(x))
++#define zi2zl(x) ((int32_t)(x))
++#define zl2zc(x) ((uint8_t)(x))
++#define zl2zs(x) ((int16_t)(x))
++#define zl2zi(x) ((int16_t)(x))
++#define zuc2zul(x) ((uint32_t)(x))
++#define zus2zul(x) ((uint32_t)(x))
++#define zui2zul(x) ((uint32_t)(x))
++#define zul2zuc(x) ((int8_t)(x))
++#define zul2zus(x) ((uint16_t)(x))
++#define zul2zui(x) ((uint16_t)(x))
++#define zul2zl(x) ((int32_t)(x))
++#define zl2zul(x) ((uint32_t)(x))
++#define zf2zd(x) ((double)(x))
++#define zd2zf(x) ((float)(x))
++#define zd2zl(x) ((int32_t)(x))
++#define zl2zd(x) ((double)(x))
++#define zd2zul(x) ((uint32_t)(x))
++#define zul2zd(x) ((double)(x))
++#define zp2zul(x) ((uint32_t)(x))
++#define zul2zp(x) ((uint16_t)(x))
++#define l2zl(x) ((int32_t)(x))
++#define ul2zul(x) ((uint32_t)(x))
++#define d2zd(x) ((double)(x))
++#define zl2l(x) ((long)(x))
++#define zul2ul(x) ((unsigned long)(x))
++#define zd2d(x) ((double)(x))
++#define zladd(a,b) ((a)+(b))
++#define zuladd(a,b) ((a)+(b))
++#define zdadd(a,b) ((a)+(b))
++#define zlsub(a,b) ((a)-(b))
++#define zulsub(a,b) ((a)-(b))
++#define zdsub(a,b) ((a)-(b))
++#define zlmult(a,b) ((a)*(b))
++#define zulmult(a,b) ((a)*(b))
++#define zdmult(a,b) ((a)*(b))
++#define zldiv(a,b) ((a)/(b))
++#define zuldiv(a,b) ((a)/(b))
++#define zddiv(a,b) ((a)/(b))
++#define zlmod(a,b) ((a)%(b))
++#define zulmod(a,b) ((a)%(b))
++#define zllshift(a,b) ((a)<<(b))
++#define zullshift(a,b) ((a)<<(b))
++#define zlrshift(a,b) ((a)>>(b))
++#define zulrshift(a,b) ((a)>>(b))
++#define zland(a,b) ((a)&(b))
++#define zuland(a,b) ((a)&(b))
++#define zlor(a,b) ((a)|(b))
++#define zulor(a,b) ((a)|(b))
++#define zlxor(a,b) ((a)^(b))
++#define zulxor(a,b) ((a)^(b))
++#define zlmod(a,b) ((a)%(b))
++#define zulmod(a,b) ((a)%(b))
++#define zlkompl(a) (~(a))
++#define zulkompl(a) (~(a))
++#define zlleq(a,b) ((a)<=(b))
++#define zulleq(a,b) ((a)<=(b))
++#define zdleq(a,b) ((a)<=(b))
++#define zpleq(a,b) ((a)<=(b))
++#define zleqto(a,b) ((a)==(b))
++#define zuleqto(a,b) ((a)==(b))
++#define zdeqto(a,b) ((a)==(b))
++#define zpeqto(a,b) ((a)==(b))
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/machine.c vbcc-0.7.orig/machines/z/machine.c
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/machine.c	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/machines/z/machine.c	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,2752 @@
++/* z/machine.c
++ * Code generator for the Z-machine.
++ * (C) David Given 2001
++ */
++
++/* This code is licensed under the MIT open source license.
++ *
++ * Copyright (c) 2001, David Given
++ * All rights reserved.
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++ * DEALINGS IN THE SOFTWARE.
++ */
++
++/* This code generator produces code for the Z-machine. The Z-machine is the
++ * highly peculiar virtual machine used for the old Infocom text adventures;
++ * these days, an extended form is still used in the interactive fiction genre
++ * of games. Usually, a dedicated compiler called Inform is used to generate
++ * code, but it would be nice to be able to use real C, so here we are.
++ *
++ * The Z-machine is (mostly) a semi-stack-based Harvard architecture machine.
++ * (Split code and data space, although they can share if you're clever. And
++ * mad.) It has no registers, but it does have procedure local variables which
++ * will do instead. It has a dedicated stack but as it's not accessible by
++ * ordinary memory it's not useful for C. It uses 8 and 16 bit words, so we'll
++ * have to emulate 32-bit arithmetic.
++ *
++ * For more information, including code for Inform, various interpreters, more
++ * documentation than you can shake a stick at, and the full technical reference
++ * for the Z-machine, check out the Interactive Fiction archive, at
++ * http://www.ifarchive.org.
++ *
++ * Things to note: there is no Z-machine assembler. (Well, there's zasm, but it's
++ * really just a rumour.) Luckily, Inform has an assembler mode, where it'll
++ * generate raw Z-machine opcodes. Unluckily, it's horribly buggy... So we're
++ * going to have to generate Inform source, which seems at first to be rather
++ * silly, but as Inform is quite a simple compiler we can make sure that it's
++ * only going to generate the instructions we want it to generate.
++ */
++
++/* vbcc-mandated header. */
++
++#include "supp.h"
++static char FILE_[]=__FILE__;
++char cg_copyright[]="vbcc code-generator for Z-machine V0.0 (c) in 2001 by David Given";
++
++/* Command-line flags. */
++
++int g_flags[MAXGF] = {
++	STRINGFLAG,
++	0,
++	0,
++	0,
++	0,
++	0
++};
++char *g_flags_name[MAXGF] = {
++	"module-name",
++	"trace-calls",
++	"trace-all",
++	"safe-branches",
++	"comment-ic",
++	"comment-misc"
++};
++union ppi g_flags_val[MAXGF];
++
++/* Type alignment. Much better code is generated if we can use even alignment.
++ */
++
++zlong align[16] = {
++	0,	/* 0: unused */
++	1,	/* 1: CHAR */
++	2,	/* 2: SHORT */
++	2, 	/* 3: INT */
++	2,	/* 4: LONG */
++	2,	/* 5: FLOAT */
++	2,	/* 6: DOUBLE */
++	2,	/* 7: VOID */
++	2,	/* 8: POINTER */
++	1,	/* 9: ARRAY */
++	1,	/* 10: STRUCT */
++	1,	/* 11: UNION */
++	1,	/* 12: ENUM */
++	1,	/* 13: FUNKT */
++	0,	/* 14: unused */
++	0,	/* 15: unused */
++};
++
++/* Alignment that is valid for all types. */
++
++zlong maxalign = 2;
++
++/* Number of bits in a char. */
++
++zlong char_bit = 8;
++
++/* Sizes of all elementary types, in bytes. */
++
++zlong sizetab[16] = {
++	0,	/* 0: unused */
++	1,	/* 1: CHAR */
++	2,	/* 2: SHORT */
++	2, 	/* 3: INT */
++	4,	/* 4: LONG */
++	4,	/* 5: FLOAT */
++	8,	/* 6: DOUBLE */
++	0,	/* 7: VOID */
++	2,	/* 8: POINTER */
++	0,	/* 9: ARRAY */
++	0,	/* 10: STRUCT */
++	0,	/* 11: UNION */
++	2,	/* 12: ENUM */
++	0,	/* 13: FUNKT */
++	0,	/* 14: unused */
++	0,	/* 15: unused */
++};
++
++/* Minimum and Maximum values each type can have.
++ */
++
++zlong t_min[32] = {
++		/* Signed: */
++	0,		/* 0: unused */
++	-128L,		/* 1: CHAR */
++	-32768L,	/* 2: SHORT */
++	-32768L, 	/* 3: INT */
++	-2147483647L,	/* 4: LONG */
++	0,		/* 5: FLOAT */
++	0,		/* 6: DOUBLE */
++	0,		/* 7: VOID */
++	0,		/* 8: POINTER */
++	0,		/* 9: ARRAY */
++	0,		/* 10: STRUCT */
++	0,		/* 11: UNION */
++	0,		/* 12: ENUM */
++	0,		/* 13: FUNKT */
++	0,		/* 14: unused */
++	0,		/* 15: unused */
++	0,		/* 0: unused */
++		/* Unsigned: */
++	0,		/* 1: CHAR */
++	0,		/* 2: SHORT */
++	0, 		/* 3: INT */
++	0,		/* 4: LONG */
++	0,		/* 5: FLOAT */
++	0,		/* 6: DOUBLE */
++	0,		/* 7: VOID */
++	0,		/* 8: POINTER */
++	0,		/* 9: ARRAY */
++	0,		/* 10: STRUCT */
++	0,		/* 11: UNION */
++	0,		/* 12: ENUM */
++	0,		/* 13: FUNKT */
++	0,		/* 14: unused */
++	0,		/* 15: unused */
++};
++zulong t_max[32] = {
++		/* Signed: */
++	0,		/* 0: unused */
++	127UL,		/* 1: CHAR */
++	32767UL,	/* 2: SHORT */
++	32767UL, 	/* 3: INT */
++	2147483647UL,	/* 4: LONG */
++	0,		/* 5: FLOAT */
++	0,		/* 6: DOUBLE */
++	0,		/* 7: VOID */
++	0,		/* 8: POINTER */
++	0,		/* 9: ARRAY */
++	0,		/* 10: STRUCT */
++	0,		/* 11: UNION */
++	0,		/* 12: ENUM */
++	0,		/* 13: FUNKT */
++	0,		/* 14: unused */
++	0,		/* 15: unused */
++	0,		/* 0: unused */
++		/* Unsigned: */
++	255UL,		/* 1: CHAR */
++	65535UL,	/* 2: SHORT */
++	65535UL, 	/* 3: INT */
++	4294967295UL,	/* 4: LONG */
++	0,		/* 5: FLOAT */
++	0,		/* 6: DOUBLE */
++	0,		/* 7: VOID */
++	0,		/* 8: POINTER */
++	0,		/* 9: ARRAY */
++	0,		/* 10: STRUCT */
++	0,		/* 11: UNION */
++	0,		/* 12: ENUM */
++	0,		/* 13: FUNKT */
++	0,		/* 14: unused */
++	0,		/* 15: unused */
++};
++
++/* Names of all the registers.
++ * We can have 16 local variables per routine. Var 0 is always the C stack
++ * pointer, xp. All the others can be used by the compiler. xp doesn't actually
++ * appear in the register map, so we get 15 main registers. 
++ */
++
++char* regnames[] = {
++	"sp", /* vbcc doesn't use this, but we do */
++	"xp", 	"r0", 	"r1",  	"r2", 	"r3", 	"r4", 	"r5", 	"r6",
++	"r7", 	"r8", 	"r9",	"r10",	"r11",	"r12"};
++#define XP 1
++#define USERREG 2
++
++/* The size of each register, in byes. */
++
++zlong regsize[] = {
++	0,
++	2,	2,	2,	2,	2,	2,	2,	2,
++	2,	2,	2,	2,	2,	2};
++
++/* Type needed to store each register. */
++
++struct Typ ityp = {INT};
++struct Typ* regtype[] = {
++	NULL,
++	&ityp,	&ityp,	&ityp,	&ityp,	&ityp,	&ityp,	&ityp,	&ityp,
++	&ityp,	&ityp,	&ityp,	&ityp,	&ityp,	&ityp};
++	
++/* These registers are those dedicated for use by the backend. These ones will
++ * not be used by the code generator. */
++
++int regsa[] = {
++	0,
++	1,	0,	0,	0,	0,	0,	0,	0,
++	0,	0,	0,	0,	0,	0};
++
++/* Specifies which registers may be destroyed by function calls. As we're
++ * storing our registers in local variables so they're being automatically
++ * saved for us, none of them.
++ */
++
++int regscratch[] = {
++	0,
++	0,	0,	0,	0,	0,	0,	0,	0,
++	0,	0,	0,	0,	0,	0};
++
++/* Default state for register parameter passing. */
++
++struct reg_handle empty_reg_handle =
++	{USERREG};
++
++/* Prefix for labels. */
++
++static char* labelprefix = "L";
++
++/* Name of the current module; used for generating unique names for statics and
++ * the constant pool. */
++
++static char* modulename;
++
++/* Stack frame layout:
++ *
++ *  --------------
++ *      Arg 4        (Arguments being passed to this function)
++ *      Arg 3
++ *      Arg 2
++ *      Arg 1
++ *  -------------- xp + stackparamadjust + stackoffset
++ *     Local 4       (This function's temp space)
++ *     Local 3
++ *     Local 2
++ *     Local 1
++ *  -------------- xp + stackparamadjust
++ *      Arg 2        (Arguments this function has pushed to pass
++ *      Arg 1         to a called function)
++ *  -------------- xp
++ *
++ * Any area may be zero in size. (Although stackoffset is always at least 2 for
++ * some inadequately explained reason.)
++ */
++
++static int stackoffset;
++static int stackparamadjust;
++
++/* Represents something the Z-machine can use as an instruction operand. */
++
++struct zop {
++	int type;
++	union {
++		int reg;
++		zlong constant;
++		char* identifier;
++	} val;
++};
++
++enum {
++	ZOP_STACK,
++	ZOP_REG,
++	ZOP_CONSTANT,
++	ZOP_EXTERN,
++	ZOP_STATIC,
++	ZOP_CONSTANTADDR
++};
++
++struct constant {
++	struct constant* next;
++	int id;
++	zlong value;
++};
++
++/* Some useful zops. */
++
++//struct zop zop_zero = {ZOP_CONSTANT, {constant: 0}};
++struct zop zop_zero = {ZOP_CONSTANT, 0};
++//struct zop zop_xp = {ZOP_REG, {reg: XP}};
++struct zop zop_xp = {ZOP_REG, 1};
++struct zop zop_stack = {ZOP_STACK, 0};
++
++/* Temporaries used to store comparison register numbers. */
++
++static struct zop compare1;
++static struct zop compare2;
++
++/* Keeps track of whether we've emitted anything or not. Used to determine
++ * whether to emit the seperating ; or not. If it's 1, we haven't emitted
++ * anything. If it's -1, we're doing an array, so we need to emit a final (0)
++ * to finish it off if it's only one byte long. 0 for anything else. */
++
++static int virgin = 1;
++
++/* The current variable we're emitting data for. */
++
++struct variable {
++	int type;
++	union {
++		char* identifier;
++		int number;
++	} val;
++	zint offset;
++};
++
++struct variable currentvar;
++
++/* Inform can't emit variable references inside arrays. So when vbcc wants to
++ * put, say, the address of something in a global variable, we have to write it
++ * in later. A linked list of these structures keeps track of the items that
++ * need fixing up. */
++
++struct fixup {
++	struct fixup* next;
++	struct variable identifier;
++	struct variable value;
++	zlong offset;
++};
++
++static struct fixup* fixuplist = NULL;
++	
++/* 32-bit values are stored in a constant pool, for simplicity. It's kept track
++ * of in this linked list. */
++
++/* moving struct to fix compile in plan 9
++struct constant {
++	struct constant* next;
++	int id;
++	zlong value;
++};
++*/
++
++static struct constant* constantlist = NULL;
++static int constantnum = 0;
++
++/* The function we're currently compiling. */
++
++static struct Var* function;
++
++/* Function prototypes. */
++
++static void emit_add(FILE* fp, struct zop* q1, struct zop* q2, struct zop* z);
++static void read_reg(FILE* fp, struct obj* obj, int typf, int reg);
++static int addconstant(zlong value);
++
++/* Emit debugging info. */
++
++static void debugemit(FILE* fp, char* fmt, ...)
++{
++	va_list ap;
++
++	va_start(ap, fmt);
++	if (g_flags[5] & USEDFLAG)
++		vfprintf(fp, fmt, ap);
++	va_end(ap);
++}
++
++/* Do we need to emit a ; before the next thing? */
++
++static void reflower(FILE* fp)
++{
++	if (!virgin)
++		fprintf(fp, ";\n");
++	if (virgin == -1)
++	{
++		if (currentvar.offset == 1)
++			fprintf(fp, "(0)");
++		fprintf(fp, ";");
++	}
++	virgin = 0;
++}
++
++/* Extract the sign extended byte n of a value. */
++
++static char xbyte(zlong val, int byte)
++{
++	val <<= (sizeof(val)*8) - (byte*8) - 8;
++	val >>= (sizeof(val)*8) - 8;
++	return (unsigned char) val;
++}
++
++/* Extract the sign extended word n of a value. */
++
++static zshort xword(zlong val, int word)
++{
++	val <<= (sizeof(val)*8) - (word*16) - 16;
++	val >>= (sizeof(val)*8) - 16;
++	return (zshort) val;
++}
++
++/* Debug function: prints the text name of a type. */
++
++static void dump_type(FILE* fp, int typf)
++{
++	switch (typf)
++	{
++		case VOID:	fprintf(fp, "VOID"); break;
++		case CHAR:	fprintf(fp, "CHAR"); break;
++		case SHORT:	fprintf(fp, "SHORT"); break;
++		case INT:	fprintf(fp, "INT"); break;
++		case LONG:	fprintf(fp, "LONG"); break;
++		case POINTER:	fprintf(fp, "POINTER"); break;
++		case STRUCT:	fprintf(fp, "STRUCT"); break;
++		case ARRAY:	fprintf(fp, "ARRAY"); break;
++		case UNION:	fprintf(fp, "UNION"); break;
++		case FUNKT:	fprintf(fp, "FUNKT"); break;
++		default:	fprintf(fp, "unknown %X", typf);
++	}
++}
++
++/* Debug function: outputs the obj. */
++
++static void dump_obj(FILE* fp, struct obj* obj, int typf)
++{
++	int f = obj->flags & (KONST|REG|VAR|DREFOBJ|VARADR);
++
++	if (f == 0)
++	{
++		fprintf(fp, "[]");
++		return;
++	}
++
++	if (f & DREFOBJ)
++		fprintf(fp, "*");
++
++	if (f & VARADR)
++		fprintf(fp, "&");
++
++	if (f == KONST)
++	{
++		switch (typf & NU)
++		{
++			case CHAR:
++				fprintf(fp, "[char #%d]", obj->val.vchar);
++				break;
++
++			case UNSIGNED|CHAR:
++				fprintf(fp, "[uchar #%u]", obj->val.vuchar);
++				break;
++
++			case SHORT:
++				fprintf(fp, "[short #%d]", obj->val.vshort);
++				break;
++
++			case UNSIGNED|SHORT:
++				fprintf(fp, "[ushort #%u]", obj->val.vushort);
++				break;
++
++			case INT:
++				fprintf(fp, "[int #%d]", obj->val.vint);
++				break;
++
++			case UNSIGNED|INT:
++				fprintf(fp, "[uint #%d]", obj->val.vuint);
++				break;
++
++			case LONG:
++				fprintf(fp, "[long #%d]", obj->val.vlong);
++				break;
++
++			case UNSIGNED|LONG:
++				fprintf(fp, "[ulong #%u]", obj->val.vulong);
++				break;
++
++			case FLOAT:
++				fprintf(fp, "[float #%04X]", obj->val.vfloat);
++				break;
++
++			case DOUBLE:
++				fprintf(fp, "[double #%08X]", obj->val.vdouble);
++				break;
++
++			case POINTER:
++				fprintf(fp, "[pointer #%04X]", obj->val.vpointer);
++				break;
++		}
++	}
++	else if (f == REG)
++		fprintf(fp, "[reg %s]", regnames[obj->reg]);
++	else if (f == (REG|DREFOBJ))
++		fprintf(fp, "[deref reg %s]", regnames[obj->reg]);
++	//else if (f & VAR)
++	else
++	{
++		fprintf(fp, "[var ");
++		dump_type(fp, typf);
++		fprintf(fp, " %s", obj->v->identifier);
++
++		if ((obj->v->storage_class == AUTO) ||
++		    (obj->v->storage_class == REGISTER))
++		{
++			zlong offset = obj->v->offset;
++			//if (offset < 0)
++			//	offset = -(offset+maxalign);
++			fprintf(fp, " at fp%+d", offset);
++		}
++
++		fprintf(fp, "+%ld", obj->val.vlong);
++
++		if (f & REG)
++			fprintf(fp, " in %s", regnames[obj->reg]);
++		fprintf(fp, "]");
++	}
++}
++
++/* Debug function: outputs the ic, as a comment. */
++
++static void dump_ic(FILE* fp, struct IC* ic)
++{
++	char* p;
++
++	if (!ic)
++		return;
++
++	if (!(g_flags[4] & USEDFLAG))
++		return;
++
++	if (g_flags[2] & USEDFLAG)
++		fprintf(fp, "print \"");
++	else
++		fprintf(fp, "! ");
++	
++	switch (ic->code)
++	{
++		case ASSIGN:		p = "ASSIGN";		break;
++		case OR:		p = "OR";		break;
++		case XOR:		p = "XOR";		break;
++		case AND:		p = "AND";		break;
++		case LSHIFT:		p = "LSHIFT";		break;
++		case RSHIFT:		p = "RSHIFT";		break;
++		case ADD:		p = "ADD";		break;
++		case SUB:		p = "SUB";		break;
++		case MULT:		p = "MULT";		break;
++		case DIV:		p = "DIV";		break;
++		case MOD:		p = "MOD";		break;
++		case KOMPLEMENT:	p = "KOMPLEMENT";	break;
++		case MINUS:		p = "MINUS";		break;
++		case ADDRESS:		p = "ADDRESS";		break;
++		case CALL:		p = "CALL";		break;
++		case CONVCHAR:		p = "CONVCHAR";		break;
++		case CONVSHORT:		p = "CONVSHORT";	break;
++		case CONVINT:		p = "CONVINT";		break;
++		case CONVLONG:		p = "CONVLONG";		break;
++		case CONVFLOAT:		p = "CONVFLOAT";	break;
++		case CONVDOUBLE:	p = "CONVDOUBLE";	break;
++		case CONVPOINTER:	p = "CONVPOINTER";	break;
++		case CONVUCHAR:		p = "CONVUCHAR";	break;
++		case CONVUSHORT:	p = "CONVUSHORT";	break;
++		case CONVUINT:		p = "CONVUINT";		break;
++		case CONVULONG:		p = "CONVULONG";	break;
++		case ALLOCREG:		p = "ALLOCREG";		break;
++		case FREEREG:		p = "FREEREG";		break;
++		case COMPARE:		p = "COMPARE";		break;
++		case TEST:		p = "TEST";		break;
++		case LABEL:		p = "LABEL";		break;
++		case BEQ:		p = "BEQ";		break;
++		case BNE:		p = "BNE";		break;
++		case BLT:		p = "BLT";		break;
++		case BGT:		p = "BGT";		break;
++		case BLE:		p = "BLE";		break;
++		case BGE:		p = "BGE";		break;
++		case BRA:		p = "BRA";		break;
++		case PUSH:		p = "PUSH";		break;
++		case ADDI2P:		p = "ADDI2P";		break;
++		case SUBIFP:		p = "SUBIFP";		break;
++		case SUBPFP:		p = "SUBPFP";		break;
++		case GETRETURN:		p = "GETRETURN";	break;
++		case SETRETURN:		p = "SETRETURN";	break;
++		case MOVEFROMREG:	p = "MOVEFROMREG";	break;
++		case MOVETOREG:		p = "MOVETOREG";	break;
++		case NOP:		p = "NOP";		break;
++		default:		p = "???";
++	}
++
++	fprintf(fp, "%s ", p);
++	dump_type(fp, ic->typf);
++	fprintf(fp, " ");
++
++	switch (ic->code)
++	{
++		case LABEL:
++		case BEQ:
++		case BNE:
++		case BLT:
++		case BGT:
++		case BLE:
++		case BGE:
++		case BRA:
++			fprintf(fp, "%d", ic->typf);
++			goto epilogue;
++	}
++	
++	dump_obj(fp, &ic->q1, ic->typf);
++	fprintf(fp, " ");
++	dump_obj(fp, &ic->q2, ic->typf);
++	fprintf(fp, " -> ");
++	dump_obj(fp, &ic->z, ic->typf);
++
++epilogue:
++	if (g_flags[2] & USEDFLAG)
++		fprintf(fp, "^\";\n");
++	else
++		fprintf(fp, "\n");
++}
++
++/* Initialise the code generator. This is called once. Returns 0 if things go
++ * wrong. */
++
++int init_cg(void)
++{
++	modulename = g_flags_val[0].p;
++	if (!modulename)
++		modulename = "";
++	return 1;
++}
++
++/* Returns the register in which variables of type typ are returned (or 0 if it
++ * can't be done). */
++
++int freturn(struct Typ *typ)
++{
++	int s = sizetab[typ->flags & NQ];
++	if ((typ->flags & NQ) == VOID)
++		return USERREG;
++	if ((s <= sizetab[INT]) && (s > 0))
++		return USERREG;
++	return 0;
++}
++
++/* Returns 1 if register reg can store variables of type typ. mode is set
++ * if the register is a pointer and the register is going to be dereferenced.
++ */
++
++int regok(int reg, int typf, int mode)
++{
++	int s = sizetab[typf & NQ];
++	if ((typf & NQ) == VOID)
++		return 1;
++	if ((s <= sizetab[INT]) && (s > 0))
++		return 1;
++	return 0;
++}
++
++/* Returns zero if the IC ic can be safely executed without danger of
++ * exceptions or similar things; for example, divisions or pointer dereferences
++ * are dangerous. This is used by the optimiser for code reordering.
++ */
++
++int dangerous_IC(struct IC *ic)
++{
++	/* Check for dereferences. */
++
++	if ((ic->q1.flags & DREFOBJ) ||
++	    (ic->q2.flags & DREFOBJ) ||
++	    (ic->z.flags & DREFOBJ))
++		return 0;
++
++	/* Division or modulo? */
++
++	if ((ic->code == DIV) ||
++	    (ic->code == MOD))
++		return 0;
++
++	/* Safe, as far as we can tell. */
++
++	return 1;
++}
++
++/* Returns zero if the code for converting type p->ntyp to type typ is a noop.
++ */
++
++int must_convert(np p, int typ)
++{
++	int oldtype = p->ntyp->flags & NQ;
++	int newtype = typ & NQ;
++
++	/* ints and shorts are equivalent. */
++
++	if (oldtype == SHORT)
++		oldtype = INT;
++	if (newtype == SHORT)
++		newtype = INT;
++
++	/* Both the same type? */
++
++	if (oldtype == newtype)
++		return 0;
++
++#if 0
++	/* Converting two basic integers? */
++
++	if ((oldtype <= INT) && (newtype <= INT))
++	{
++		/* ... but char to short needs an AND. */
++
++		if ((oldtype == CHAR) && (newtype != CHAR))
++			return 1;
++		return 0;
++	}
++#endif
++
++	/* Pointer to/from int? */
++
++	if (((oldtype == INT) || (oldtype == POINTER)) &&
++	    ((newtype == INT) || (newtype == POINTER)))
++		return 0;
++
++	/* Everything else needs code. */
++
++	return 1;
++}
++
++/* Ensure the output is aligned. A noop on the Z-machine. */
++
++void gen_align(FILE* fp, zlong align)
++{
++}
++
++/* Generate the label part of a variable definition. */
++
++void gen_var_head(FILE* fp, struct Var* var)
++{
++	if (var->storage_class == EXTERN)
++		debugemit(fp, "! Var %s %X\n", var->identifier, var->flags);
++	if (var->storage_class == STATIC)
++		debugemit(fp, "! Var static %ld %s %X\n", var->offset, var->identifier, var->flags);
++
++	/* We only want to emit records for genuinely defined variables. For
++	 * some reason, TENTATIVE is defined for some of this. */
++
++	if ((var->storage_class == EXTERN) &&
++	    !(var->flags & DEFINED) &&
++	    !(var->flags & TENTATIVE))
++		return;
++	
++	reflower(fp);
++	virgin = -1;
++	switch (var->storage_class)
++	{
++		case EXTERN:
++			/* This doesn't actually mean external linkage; it
++			 * means a non-static global that may be referenced
++			 * externally. */
++			fprintf(fp, "Array _%s ->\n",
++				var->identifier);
++			currentvar.type = EXTERN;
++			currentvar.val.identifier = strdup(var->identifier);
++			currentvar.offset = 0;
++			break;
++			
++		case STATIC:
++			fprintf(fp, "Array STATIC_%s_%ld ->\n",
++				modulename, var->offset);
++			currentvar.type = STATIC;
++			currentvar.val.number = var->offset;
++			currentvar.offset = 0;
++			break;
++	}
++}
++
++/* Emit a certain number of bytes of bss data. No bss on the Z-machine,
++ * remember. */
++
++void gen_ds(FILE *fp, zlong size, struct Typ *typ)
++{
++	fprintf(fp, " %ld\n", size);
++	currentvar.offset += size;
++}
++
++/* Emit a certain number of bytes of initialised data. */
++
++void gen_dc(FILE *fp, int typf, struct const_list *p)
++{
++	switch (typf & NQ)
++	{
++		case CHAR:
++			fprintf(fp, " (%d)\n",
++				p->val.vuchar);
++			currentvar.offset += 1;
++			break;
++
++		case SHORT:
++		case INT:
++		reallyanint:
++			fprintf(fp, " (%d) (%d)\n",
++				xbyte(p->val.vint, 1),
++				xbyte(p->val.vint, 0));
++			currentvar.offset += 2;
++			break;
++				
++		case LONG:
++			fprintf(fp, " (%d) (%d) (%d) (%d)\n",
++				xbyte(p->val.vlong, 3),
++				xbyte(p->val.vlong, 2),
++				xbyte(p->val.vlong, 1),
++				xbyte(p->val.vlong, 0));
++			currentvar.offset += 4;
++			break;
++
++		case POINTER:
++			if (!p->tree)
++				goto reallyanint;
++			{
++				struct fixup* fixup = malloc(sizeof(struct fixup));
++				struct obj* obj = &p->tree->o;
++				fixup->next = fixuplist;
++				fixuplist = fixup;
++				fixup->identifier = currentvar;
++
++				switch (obj->v->storage_class)
++				{
++					case EXTERN:
++						fixup->value.type = EXTERN;
++						fixup->value.val.identifier = strdup(obj->v->identifier);
++						break;
++
++					case STATIC:
++						fixup->value.type = STATIC;
++						fixup->value.val.number = obj->v->offset;
++						break;
++
++					default:
++						ierror(0);
++				}
++				fixup->value.offset = 0;
++				fixup->offset = obj->val.vlong;
++				fprintf(fp, " (0) (0)\n");
++				currentvar.offset += 2;
++			}
++			break;
++
++		default:
++			printf("type %d\n", typf);
++			ierror(0);
++	}
++}
++
++/* Returns the offset of the (STATIC or AUTO) given object. */
++
++zlong voff(struct obj* obj)
++{
++	zlong offset = obj->v->offset;
++	if (offset < 0)
++		offset = stackparamadjust + stackoffset - offset - maxalign;
++	else
++		offset += stackparamadjust;
++
++	offset += obj->val.vlong;
++	return offset;
++}
++
++/* When a varargs function is called, we need to find where the parameters are
++ * on the stack in order to make the __va_start magic variable work. This
++ * function does that. */
++
++static int find_varargs(void)
++{
++	int offset = 0;
++	struct reg_handle rh = empty_reg_handle;
++	struct struct_declaration* sd = function->vtyp->exact;
++	int stackalign;
++	int i;
++
++	for (i=0; i<sd->count; i++)
++	{
++		/* Ignore the parameter if it's been assigned a register. */
++
++		if ((*sd->sl)[i].reg != 0)
++			continue;
++
++		/* void shouldn't happen. */
++
++		if (((*sd->sl)[i].styp->flags & NQ) == VOID)
++			ierror(0);
++
++		/* Does the backend want to assign it to a register? */
++
++		if (reg_parm(&rh, (*sd->sl)[i].styp, 0))
++			continue;
++
++		/* Add on the size of this parameter. */
++
++		offset += sizetab[(*sd->sl)[i].styp->flags & NQ];
++
++		/* Stack align. */
++
++		stackalign = align[(*sd->sl)[i].styp->flags & NQ];
++		offset = ((offset+1) / stackalign) * stackalign;
++	}
++
++	return (offset + stackoffset);
++}
++
++/* Output the name of a global. */
++
++static void emit_identifier(FILE* fp, struct obj* obj)
++{
++	switch (obj->v->storage_class)
++	{
++		case STATIC:
++			fprintf(fp, "STATIC_%s_%ld",
++				modulename, obj->v->offset);
++			break;
++
++		case EXTERN:
++			fprintf(fp, "_%s", obj->v->identifier);
++			break;
++
++		default:
++			ierror(0);
++	}
++}
++
++/* Save a register. */
++
++static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
++{
++	int flags = obj->flags &
++		(KONST|REG|VAR|DREFOBJ|VARADR);
++
++	/* Constant? */
++
++	if (flags == KONST)
++		ierror(0);
++		
++	/* Dereference? */
++
++	if (flags & DREFOBJ)
++		goto dereference;
++
++	/* Register? */
++
++	if ((flags == REG) ||
++	    ((flags & VAR) && (flags & REG) && (obj->v->storage_class == AUTO)) ||
++	    ((flags & VAR) && (flags & REG) && (obj->v->storage_class == REGISTER)))
++	{
++		if (flags & DREFOBJ)
++			fprintf(fp, "\t@store%c %s 0 %s;\n",
++				((typf & NQ) == CHAR) ? 'b' : 'w',
++				regnames[obj->reg], regnames[reg]);
++		else
++		{
++			struct zop in;
++			struct zop out;
++			in.type = ZOP_REG;
++			in.val.reg = reg;
++			out.type = ZOP_REG;
++			out.val.reg = obj->reg;
++			emit_add(fp, &in, &zop_zero, &out);
++		}
++#if 0
++			fprintf(fp, "\t@add %s 0 -> %s;\n",
++				regnames[reg], regnames[obj->reg]);
++#endif
++		return;
++	}
++
++	/* It must be a variable. */
++
++	switch (obj->v->storage_class)
++	{
++		case AUTO:
++		case REGISTER: /* Local variable */
++		{
++			zlong offset = voff(obj);
++
++			if ((typf & NQ) == CHAR)
++				fprintf(fp, "\t@storeb xp 0%+ld %s;\n",
++					offset, regnames[reg]);
++			else
++			{
++				if (offset & 1)
++				{
++					struct zop c;
++					c.type = ZOP_CONSTANT;
++					c.val.constant = offset;
++					emit_add(fp, &zop_xp, &c, &zop_stack);
++					//fprintf(fp, "\t@add xp 0%+ld -> sp;\n", offset);
++					fprintf(fp, "\t@storew sp 0 %s;\n", regnames[reg]);
++				}
++				else
++					fprintf(fp, "\t@storew xp 0%+ld %s;\n",
++						offset >> 1, regnames[reg]);
++			}
++			return;
++		}
++
++		case EXTERN:
++		case STATIC:
++			/* Dereference object. */
++
++			if ((typf & NQ) == CHAR)
++			{
++				fprintf(fp, "\t@storeb ");
++				emit_identifier(fp, obj);
++				fprintf(fp, " 0%+ld %s;\n",
++					obj->val.vlong, regnames[reg]);
++			}
++			else
++			{
++				if (obj->val.vlong & 1)
++				{
++					fprintf(fp, "\t@add ");
++					emit_identifier(fp, obj);
++					fprintf(fp, " 0%+ld -> sp;\n",
++						obj->val.vlong);
++					fprintf(fp, "\t@storew sp 0 %s;\n",
++						regnames[reg]);
++				}
++				else
++				{
++					fprintf(fp, "\t@storew ");
++					emit_identifier(fp, obj);
++					fprintf(fp, " 0%+ld %s;\n",
++						obj->val.vlong >> 1, regnames[reg]);
++				}
++			}
++			return;
++#if 0
++		case EXTERN: /* External linkage */
++			if ((typf & NQ) == CHAR)
++				fprintf(fp, "\t@storeb _%s 0%+ld %s;\n",
++					obj->v->identifier, offset, regnames[reg]);
++			else
++			{
++
++				fprintf(fp, "\t@storew _%s 0 %s;\n",
++					obj->v->identifier, regnames[reg]);
++			return;
++
++		case STATIC: /* Static global */
++			if ((typf & NQ) == CHAR)
++				fprintf(fp, "\t@storeb STATIC_%s_%ld 0%+ld %s;\n",
++					modulename, obj->v->offset, offset, regnames[reg]);
++			else
++				fprintf(fp, "\t@storew STATIC_%s_%ld 0 %s;\n",
++					modulename, obj->v->offset, regnames[reg]);
++			return;
++#endif
++
++		default:
++			ierror(0);
++	}
++
++	ierror(0); // Not reached
++dereference:
++	/* These are a *pain*.
++	 *
++	 * The first thing we need to do is to read the old contents of the
++	 * memory cell, to work out the address we need to write to; and then
++	 * do the write. Hurray for the Z-machine stack. */
++
++	obj->flags &= ~DREFOBJ;
++	read_reg(fp, obj, POINTER, 0);
++	fprintf(fp, "\t@store%c sp 0 %s;\n",
++		((typf & NQ) == CHAR) ? 'b' : 'w',
++		regnames[reg]);
++}
++
++/* Move one register to another register. */
++
++static void move_reg(FILE* fp, int reg1, int reg2)
++{
++	struct zop r1;
++	struct zop r2;
++	r1.type = ZOP_REG;
++	r1.val.reg = reg1;
++	r2.type = ZOP_REG;
++	r2.val.reg = reg2;
++	emit_add(fp, &r1, &zop_zero, &r2);
++}
++/* Load a value into a zop. */
++
++static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
++{
++	int flags = obj->flags &
++		(KONST|REG|VAR|DREFOBJ|VARADR);
++
++	/* The only thing you can do with a function is to take the address of
++	 * it. */
++
++	if ((typf & NQ) == FUNKT)
++		flags &= ~DREFOBJ & ~VARADR;
++
++	/* Is this a memory dereference? */
++
++	if (flags & DREFOBJ)
++		goto dereference;
++	
++	/* Constant? */
++
++	if (flags == KONST)
++	{
++		struct zop c;
++		struct zop r;
++		c.type = ZOP_CONSTANT;
++		//fprintf(fp, "\t@add ");
++		switch (typf & NQ)
++		{
++			case CHAR:		c.val.constant = obj->val.vchar;	break;
++			case UNSIGNED|CHAR:	c.val.constant = obj->val.vuchar;	break;
++			case SHORT:		c.val.constant = obj->val.vshort;	break;
++			case UNSIGNED|SHORT:	c.val.constant = obj->val.vushort;	break;
++			case POINTER:		c.val.constant = obj->val.vpointer;	break;
++			case INT:		c.val.constant = obj->val.vint;		break;
++			case UNSIGNED|INT:	c.val.constant = obj->val.vuint;	break;
++			default:
++				ierror(typf);
++		}
++		r.type = ZOP_REG;
++		r.val.reg = reg;
++		emit_add(fp, &c, &zop_zero, &r);
++		//fprintf(fp, " 0 -> %s;\n", regnames[reg]);
++	}
++	else if (flags == REG) /* Register? */
++	{
++		move_reg(fp, obj->reg, reg);
++		//fprintf(fp, "\t@add %s 0 -> %s;\n", regnames[obj->reg], regnames[reg]);
++	}
++	else if ((flags & REG) && ((typf & NQ) == FUNKT)) /* Function pointer? */
++	{
++		move_reg(fp, obj->reg, reg);
++		//fprintf(fp, "\t@add %s 0 -> %s;\n", regnames[obj->reg], regnames[reg]);
++	}
++	else
++	{
++		/* It must be a variable. */
++
++		switch (obj->v->storage_class)
++		{
++			case AUTO:
++			case REGISTER: /* Local variable */
++				if (flags & VARADR)
++				{
++					fprintf(fp, "\t@add xp 0%+ld -> %s;\n",
++						voff(obj), regnames[reg]);
++				}
++				else if (flags & REG)
++				{
++					move_reg(fp, obj->reg, reg);
++					//fprintf(fp, "\t@add %s 0 -> %s;\n",
++					//	regnames[obj->reg], regnames[reg]);
++				}
++				else
++				{
++					zlong offset = voff(obj);
++
++					if ((typf & NQ) == CHAR)
++						fprintf(fp, "\t@loadb xp 0%+ld -> %s;\n",
++							offset, regnames[reg]);
++					else
++					{
++						if (offset & 1)
++						{
++							fprintf(fp, "\t@add xp 0%+ld -> sp;\n", offset);
++							fprintf(fp, "\t@loadw sp 0 -> %s;\n", regnames[reg]);
++						}
++						else
++							fprintf(fp, "\t@loadw xp 0%+ld -> %s;\n",
++								offset >> 1, regnames[reg]);
++					}
++				}
++				break;
++
++			case STATIC:
++			case EXTERN: /* Global variable. Implicit dereference,
++					with the offset in obj->val.vlong. */
++
++				/* ...but functions are never dereferenced. */
++
++				if ((flags & VARADR) ||
++				    ((typf & NQ) == FUNKT))
++				{
++					/* Fetch address of object. */
++
++					fprintf(fp, "\t@add ");
++					emit_identifier(fp, obj);
++					fprintf(fp, " 0%+ld -> %s;\n",
++						obj->val.vlong, regnames[reg]);
++				}
++				else if (strcmp(obj->v->identifier, "__va_start") == 0)
++				{
++					fprintf(fp, "\t@add xp 0%+ld -> %s;\n",
++						find_varargs(), regnames[reg]);
++				}
++				else
++				{
++					/* Dereference object. */
++
++					if ((typf & NQ) == CHAR)
++					{
++						fprintf(fp, "\t@loadb ");
++						emit_identifier(fp, obj);
++						fprintf(fp, " 0%+ld -> %s;\n",
++							obj->val.vlong, regnames[reg]);
++					}
++					else
++					{
++						if (obj->val.vlong & 1)
++						{
++							fprintf(fp, "\t@add ");
++							emit_identifier(fp, obj);
++							fprintf(fp, " 0%+ld -> sp;\n",
++								obj->val.vlong);
++							fprintf(fp, "\t@loadw sp 0 -> %s;\n",
++								regnames[reg]);
++						}
++						else
++						{
++							fprintf(fp, "\t@loadw ");
++							emit_identifier(fp, obj);
++							fprintf(fp, " 0%+ld -> %s;\n",
++								obj->val.vlong >> 1, regnames[reg]);
++						}
++					}
++				}
++				break;
++
++			default:
++				ierror(obj->v->storage_class);
++		}
++	}
++	return;
++
++dereference:
++	/* Do we need to dereference the thing we just fetched? */
++
++	/* Fetch the value to dereference. */
++	obj->flags &= ~DREFOBJ;
++	read_reg(fp, obj, POINTER, 0);
++		
++	if (flags & DREFOBJ)
++	{
++		switch (typf & NQ)
++		{
++			case CHAR:
++				fprintf(fp, "\t@loadb sp 0 -> %s;\n",
++					regnames[reg], regnames[reg]);
++				break;
++
++			case SHORT:
++			case INT:
++			case POINTER:
++			case FUNKT:
++				fprintf(fp, "\t@loadw sp 0 -> %s;\n",
++					regnames[reg], regnames[reg]);
++				break;
++
++			default:
++				ierror(typf & NQ);
++		}
++	}
++}
++
++/* Returns the zop to use for an input parameter, pushing that parameter onto
++ * the stack if necessary. */
++
++static void push_value(FILE* fp, struct obj* obj, int typf, struct zop* op)
++{
++	int flags = obj->flags &
++		(KONST|REG|VAR|DREFOBJ|VARADR);
++
++	if (flags == KONST)
++	{
++		op->type = ZOP_CONSTANT;
++		switch (typf & NU)
++		{
++			case CHAR:		op->val.constant = obj->val.vchar;	break;
++			case UNSIGNED|CHAR:	op->val.constant = obj->val.vuchar;	break;
++			case SHORT:		op->val.constant = obj->val.vshort;	break;
++			case UNSIGNED|SHORT:	op->val.constant = obj->val.vushort;	break;
++			case INT:		op->val.constant = obj->val.vint;	break;
++			case UNSIGNED|INT:	op->val.constant = obj->val.vuint;	break;
++			case POINTER:		op->val.constant = obj->val.vpointer;	break;
++			default:
++				fprintf(fp, "XXX !!! bad konst type %X\n", typf);
++		}
++		return;
++	}
++
++	/* The only thing you can do with a function is to take the address of it. */
++
++	if ((typf & NQ) == FUNKT)
++		flags &= ~DREFOBJ & ~VARADR;
++
++	/* This is used by the long code. The longop functions can only operate
++	 * on pointers to longs; so if we need to pass in a constant, we have
++	 * to stash it on the stack and return a pointer. */
++
++	if (flags == (KONST|VARADR))
++	{
++		op->type = ZOP_CONSTANTADDR;
++		op->val.constant = addconstant(obj->val.vlong);
++		return;
++	}
++	
++	if (flags == REG)
++	{
++		debugemit(fp, "! zop reg %d\n", obj->reg);
++		op->type = ZOP_REG;
++		op->val.reg = obj->reg;
++		return;
++	}
++
++	if ((flags == (VAR|REG)) &&
++	    ((obj->v->storage_class == AUTO) ||
++	     (obj->v->storage_class == REGISTER)))
++	{
++		debugemit(fp, "! zop var reg %d\n", obj->reg);
++		op->type = ZOP_REG;
++		op->val.reg = obj->reg;
++		return;
++	}
++
++	if ((flags == (VAR|VARADR)) &&
++	    (obj->v->storage_class == EXTERN) &&
++	    (obj->v->offset == 0))
++	{
++		debugemit(fp, "! zop varaddr extern %s\n", obj->v->identifier);
++		op->type = ZOP_EXTERN;
++		op->val.identifier = obj->v->identifier;
++		return;
++	}
++
++	if ((flags == (VAR|VARADR)) &&
++	    (obj->v->storage_class == STATIC) &&
++	    (obj->v->offset == 0))
++	{
++		debugemit(fp, "! zop varaddr static %ld\n", obj->v->offset);
++		op->type = ZOP_STATIC;
++		op->val.constant = obj->v->offset;
++		return;
++	}
++
++	if ((flags & VAR) &&
++	    ((obj->v->vtyp->flags & NQ) == FUNKT))
++	{
++		if (obj->v->storage_class == EXTERN)
++		{
++			op->type = ZOP_EXTERN;
++			op->val.identifier = obj->v->identifier;
++		}
++		else
++		{
++			op->type = ZOP_STATIC;
++			op->val.constant = obj->v->offset;
++		}
++		return;
++	}
++	
++	read_reg(fp, obj, typf, 0);
++	op->type = ZOP_STACK;
++}
++
++/* Same as push_value(), but returns a zop for the *address* of the object, not
++ * the object itself. Used a lot by the long code. */
++
++static void push_addrof(FILE* fp, struct obj* obj, int typf, struct zop* op)
++{
++	if (obj->flags & DREFOBJ)
++		obj->flags &= ~DREFOBJ;
++	else
++		obj->flags |= VARADR;
++	push_value(fp, obj, POINTER, op);
++}
++
++/* Returns the zop to use for an output parameter. Unlike push_value, this does
++ * not emit a pop; that must be done later, if the return parameter is zero. */
++
++static void pop_value(FILE* fp, struct obj* obj, int typf, struct zop* op)
++{
++	int flags = obj->flags &
++		(KONST|REG|VAR|DREFOBJ|VARADR);
++
++	/* We don't even *try* to handle dereferences here. */
++
++	if (flags & DREFOBJ)
++		goto stack;
++
++	if (flags == REG)
++		goto reg;
++
++	if ((flags == (VAR|REG)) &&
++	    ((obj->v->storage_class == AUTO) ||
++	     (obj->v->storage_class == REGISTER)))
++		goto reg;
++
++stack:
++	op->type = ZOP_STACK;
++	return;
++
++reg:
++	op->type = ZOP_REG;
++	op->val.reg = obj->reg;
++}
++
++/* Writes code for a zop. */
++
++static void emit_zop(FILE* fp, struct zop* op)
++{
++	switch (op->type)
++	{
++		case ZOP_STACK:
++			fprintf(fp, "sp");
++			return;
++
++		case ZOP_REG:
++			fprintf(fp, "%s", regnames[op->val.reg]);
++			return;
++
++		case ZOP_CONSTANT:
++			fprintf(fp, "0%+ld", (zshort)op->val.constant);
++			return;
++
++		case ZOP_EXTERN:
++			fprintf(fp, "_%s", op->val.identifier);
++			return;
++
++		case ZOP_STATIC:
++			fprintf(fp, "STATIC_%s_%ld",
++				modulename, op->val.constant);
++			return;
++
++		case ZOP_CONSTANTADDR:
++			fprintf(fp, "CONSTANT_%s_%ld",
++				modulename, op->val.constant);
++			return;
++
++		default:
++			ierror(op->type);
++	}
++}
++
++/* This is used in conjunction with pop_value(). pop_value() returns a zop that
++ * represents the return value for a function. If that return value is the
++ * stack, the value on the stack needs to be written back into memory. That's
++ * what this function does. */
++
++static void fin_zop(FILE* fp, struct obj* obj, int typf, struct zop* op)
++{
++	switch (op->type)
++	{
++		case ZOP_STACK:
++			write_reg(fp, obj, typf, 0);
++			return;
++
++		case ZOP_REG:
++			return;
++
++		default:
++			ierror(0);
++	}
++}
++
++/* Emit a basic ADD instruction.
++ * This routine tests for all the various special cases, of which there are
++ * many, and attempts to produce optimal code.
++ */
++
++static void emit_add(FILE* fp, struct zop* q1, struct zop* q2, struct zop* z)
++{
++	/* Sometimes we get ZOP_REG with reg=0. This actually means the stack. */
++
++	if ((q1->type == ZOP_REG) && (q1->val.reg == 0))
++		q1 = &zop_stack;
++	if ((q2->type == ZOP_REG) && (q2->val.reg == 0))
++		q2 = &zop_stack;
++	if ((z->type == ZOP_REG) && (z->val.reg == 0))
++		z = &zop_stack;
++
++	/* If q2 is a constant and 0, then this might be a register move of
++	 * some kind. */
++
++	if ((q2->type == ZOP_CONSTANT) && (q2->val.constant == 0))
++	{
++		/* Left is a register? */
++		if (q1->type == ZOP_REG)
++		{
++			/* Right is a register? */
++			if (z->type == ZOP_REG)
++			{
++				/* They're the *same* register? */
++				if (q1->val.reg == z->val.reg)
++				{
++					/* No code need be emitted. */
++					return;
++				}
++
++				/* Emit a @store instruction. Unfortunately, I
++				 * can't work out the syntax for Inform's
++				 * @store opcode, so we emit a high-level
++				 * assignment instead and let Inform work it
++				 * out. */
++
++				fprintf(fp, "\t");
++				emit_zop(fp, z);
++				fprintf(fp, " = ");
++				emit_zop(fp, q1);
++				fprintf(fp, ";\n");
++				return;
++			}
++
++			/* Right is the stack? */
++			if (z->type == ZOP_STACK)
++			{
++				/* We're pushing the single parameter onto the
++				 * stack. */
++
++				fprintf(fp, "\t@push ");
++				emit_zop(fp, q1);
++				fprintf(fp, ";\n");
++				return;
++			}
++		}
++
++		/* Left is the stack? */
++		if (q1->type == ZOP_STACK)
++		{
++			/* Right is a register? */
++			if (z->type == ZOP_REG)
++			{
++				/* We're popping the single parameter off the
++				 * stack. */
++
++				fprintf(fp, "\t@pull ");
++				emit_zop(fp, z);
++				fprintf(fp, ";\n");
++				return;
++			}
++		}
++	}
++
++	/* Fall back on an ordinary @add. */
++
++	fprintf(fp, "\t@add ");
++	emit_zop(fp, q1);
++	fprintf(fp, " ");
++	emit_zop(fp, q2);
++	fprintf(fp, " -> ");
++	emit_zop(fp, z);
++	fprintf(fp, ";\n");
++}
++
++/* Copy a value from one zop to another. This is not quite as simple as you
++ * might think, because there are a number of optimisation cases to take into
++ * account.
++ *
++ * NOTE: for simplicity, this function will never emit just a single
++ * instruction --- the assignment is always done via the stack. FIXME. */
++
++static void move_value(FILE* fp, struct obj* q1o, struct obj* zo, int typf)
++{
++	struct zop q1;
++	struct zop z;
++
++	pop_value(fp, zo, typf, &z);
++	push_value(fp, q1o, typf, &q1);
++	debugemit(fp, "! L=%d R=%d\n", q1.type, z.type);
++	/* In all cases except when push_value() and fin_zop() *both* emit
++	 * code, we need to insert an assignment here. As they only emit code
++	 * in the ZOP_STACK case... */
++	if ((q1.type != ZOP_STACK) || (z.type != ZOP_STACK))
++	{
++		emit_add(fp, &q1, &zop_zero, &z);
++#if 0
++		fprintf(fp, "\t@add ");
++		emit_zop(fp, &q1);
++		fprintf(fp, " 0 -> ");
++		emit_zop(fp, &z);
++		fprintf(fp, ";\n");
++#endif
++	}
++	fin_zop(fp, zo, typf, &z);
++}
++	
++/* Copy a 32-bit value from one obj to another. */
++
++static void move_long_value(FILE* fp, struct obj* q1, struct obj* z, int typf)
++{
++	int flags = q1->flags &
++		(KONST|REG|VAR|DREFOBJ|VARADR);
++	struct zop q1z;
++	struct zop zz;
++	
++	if (flags == KONST)
++	{
++		int hi = xword(q1->val.vlong, 1);
++		int lo = xword(q1->val.vlong, 0);
++
++		push_addrof(fp, z, POINTER, &zz);
++		fprintf(fp, "\t@call_vn __long_loadconst ");
++		emit_zop(fp, &zz);
++		fprintf(fp, " 0%+ld 0%+ld;\n", (short)hi, (short)lo);
++		return;
++	}
++
++	push_addrof(fp, z, POINTER, &zz);
++	push_addrof(fp, q1, POINTER, &q1z);
++	fprintf(fp, "\t@copy_table ");
++	emit_zop(fp, &q1z);
++	fprintf(fp, " ");
++	emit_zop(fp, &zz);
++	fprintf(fp, " 4;\n");
++}
++
++/* The code generator itself.
++ * This big, complicated, hairy and scary function does the work to actually
++ * produce the code.  fp is the output stream, ic the beginning of the ic
++ * chain, func is a pointer to the actual function and stackframe is the size
++ * of the function's stack frame.
++ */
++
++void gen_code(FILE* fp, struct IC *ic, struct Var* func, zlong stackframe)
++{
++	int i;
++	struct zop q1;
++	struct zop q2;
++	struct zop z;
++	int code, typf; // ...of the IC under consideration
++
++    int c,t,lastcomp=0,reg;
++	    
++    	function = func;
++
++	/* r0..r5 are always used for parameter passing. */
++
++	regused[2] = 1;
++	regused[3] = 1;
++	regused[4] = 1;
++	regused[5] = 1;
++	regused[6] = 1;
++	regused[7] = 1;
++
++	/* This is the offset of the stack frame, relative to the current stack
++	 * pointer. */
++
++	stackoffset = stackframe;
++
++	/* No parameters pushed yet. */
++
++	stackparamadjust = 0;
++
++	reflower(fp);
++
++	if (func->storage_class == STATIC)
++		fprintf(fp, "[ STATIC_%s_%ld xp\n", modulename, func->offset);
++	else
++		fprintf(fp, "[ _%s xp\n", func->identifier);
++
++	/* Tell Inform what registers the function is using. */
++
++	for (i=1; i<=MAXR; i++)
++	{
++		//fprintf(fp, "! i=%d used %d scratch %d alloc %d\n",
++		//		i, regused[i], regscratch[i], regsa[i]);
++		if (regused[i] && !regsa[i])
++			fprintf(fp, "\t%s\n", regnames[i]);
++	}
++	fprintf(fp, ";\n");
++
++	/* Trace the function name. */
++
++	if (g_flags[1] & USEDFLAG)
++	{
++		if (func->storage_class == STATIC)
++			fprintf(fp, "print \"STATIC_%s_%ld^\";\n", modulename, func->offset);
++		else
++			fprintf(fp, "print \"_%s^\";\n", func->identifier);
++	}
++	
++	/* Adjust stack for locals. */
++
++	if (stackframe)
++		fprintf(fp, "\t@sub xp 0%+ld -> xp;\n", stackframe);
++	//if (stackoffset)
++	//	fprintf(fp, "\txp = xp - %ld\n", stackframe);
++
++    
++    	/* Iterate through all ICs. */
++
++	for (; dump_ic(fp, ic), ic; ic=ic->next)
++	{
++        c=ic->code;t=ic->typf;
++		code = ic->code;
++		typf = ic->typf;
++
++		/* Do nothing for NOPs. */
++
++		if (code == NOP)
++			continue;
++
++		/* Has the stack been adjusted due to a call? */
++
++#if 0
++		if (stackcalladjustment)
++		{
++			if ((code != GETRETURN) &&
++			    (code != FREEREG) &&
++			    (code != ALLOCREG))
++			{
++				debugemit(fp, "! stack reset %d %d\n",
++					stackparamadjust, stackcallparamsize);
++				fprintf(fp, "\t@add xp %d -> xp;\n",
++					stackparamadjust+stackcallparamsize);
++				stackparamadjust = 0;
++				stackcallparamsize = 0;
++				stackcalladjustment = 0;
++			}
++		}
++#endif
++
++#if 0
++        if(notpopped&&!dontpop){
++            int flag=0;
++            if(c==LABEL||c==COMPARE||c==TEST||c==BRA){
++                fprintf(fp,"\tadd\t%s,#%ld\n",regnames[sp],notpopped);
++                stackoffset+=notpopped;notpopped=0;
++            }
++        }
++#endif
++		/* These opcodes turn into other opcodes. */
++
++		switch (code)
++		{
++			case SUBPFP:
++			case SUBIFP:
++				code = SUB;
++				break;
++
++			case ADDI2P:
++				code = ADD;
++				break;
++		}
++
++		/* And now the big opcode switch. */
++
++		switch (code)
++		{
++			case ALLOCREG: /* Mark register in use */
++				regs[ic->q1.reg] = 1;
++				continue;
++
++			case FREEREG: /* Mark register not in use */
++				regs[ic->q1.reg] = 0;
++				continue;
++
++			case LABEL: /* Emit jump target */
++				fprintf(fp, ".%s%d;\n",
++					labelprefix, typf);
++				continue;
++
++			case BRA: /* Unconditional jump */
++				fprintf(fp, "\tjump %s%d;\n",
++					labelprefix, typf);
++				continue;
++
++			case GETRETURN: /* Read the last function call's return parameter */
++				switch (typf & NQ)
++				{
++					case CHAR:
++						//if (ic->q2.val.vlong != 1)
++						//	goto copy_struct;
++						/* fall through */
++					case SHORT:
++					case INT:
++					case POINTER:
++						write_reg(fp, &ic->z, typf, 2);
++						break;
++
++						/* Ignore the following; the
++						 * front-end will automatically
++						 * pass in an implicit
++						 * parameter to the function
++						 * containing the address of
++						 * the return parameter, so
++						 * GETRETURN ought to be a
++						 * noop. */
++					case LONG:
++					case STRUCT:
++					case VOID:
++					case ARRAY:
++						break;
++#if 0
++					copy_struct:
++						push_addrof(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@copy_table xp ");
++						emit_zop(fp, &z);
++						fprintf(fp, " %ld;\n", szof(ic->z.v->vtyp));
++						break;
++#endif
++
++					default:
++						ierror(typf & NQ);
++				}
++				//fprintf(fp, "\tr0 = ");
++				//emit_object(fp, &ic->q1, typf);
++				//fprintf(fp, ";\n");
++				//write_reg(fp, &ic->z, typf, 2);
++				continue;
++
++			case SETRETURN: /* Set this function's return parameter */
++				switch (typf & NQ)
++				{
++					case CHAR:
++						//if (ic->q2.val.vlong != 1)
++						//	goto setreturn_copy_struct;
++						/* fall through */
++					case SHORT:
++					case INT:
++					case POINTER:
++						read_reg(fp, &ic->q1, typf, 2);
++						break;
++
++					case LONG:
++					case STRUCT:
++					case VOID:
++					case ARRAY:
++#if 0
++					setreturn_copy_struct:
++						fprintf(fp, "\t@add xp %ld -> sp;\n",
++							stackoffset);
++						push_addrof(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@copy_table ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " sp %ld;\n", szof(ic->q1.v->vtyp));
++						break;
++#endif
++
++					default:
++						ierror(typf & NQ);
++				}
++				//fprintf(fp, "\tr0 = ");
++				//emit_object(fp, &ic->q1, typf);
++				//fprintf(fp, ";\n");
++				continue;
++
++			case MINUS: /* Unary minus */
++				switch (typf & NQ)
++				{
++					case CHAR:
++					case SHORT:
++					case INT:
++						push_value(fp, &ic->q1, typf, &q1);
++						pop_value(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@sub 0 ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " -> ");
++						emit_zop(fp, &z);
++						fprintf(fp, ";\n");
++						fin_zop(fp, &ic->z, typf, &z);
++						break;
++
++					case LONG:
++						push_addrof(fp, &ic->z, typf, &z);
++						push_addrof(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@call_vn __long_neg ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " ");
++						emit_zop(fp, &z);
++						fprintf(fp, ";\n");
++						break;
++
++					default:
++						ierror(0);
++				}
++				continue;
++
++			case KOMPLEMENT: /* Unary komplement */
++				/* INFORM BUG! */
++				/* The @not opcode doesn't work. We have to use a
++				 * wrapper function instead. */
++				
++				push_value(fp, &ic->q1, typf, &q1);
++				pop_value(fp, &ic->z, typf, &z);
++				fprintf(fp, "\t@call_2s __not ");
++				emit_zop(fp, &q1);
++				fprintf(fp, " -> ");
++				emit_zop(fp, &z);
++				fprintf(fp, ";\n");
++				fin_zop(fp, &ic->z, typf, &z);
++				continue;
++
++			case MOVEFROMREG: /* Write a register to memory */
++				write_reg(fp, &ic->z, typf, ic->q1.reg);
++				continue;
++
++			case MOVETOREG: /* Read a register from memory */
++				read_reg(fp, &ic->q1, typf, ic->z.reg);
++				continue;
++
++			case ASSIGN: /* Move something to somewhere else */
++				debugemit(fp, "! ASSIGN size %d typf %d\n", ic->q2.val.vlong, typf & NQ);
++				switch (typf & NQ)
++				{
++					case CHAR:
++						if (ic->q2.val.vlong != 1)
++							goto assign_copy_struct;
++						/* fall through */
++					case SHORT:
++					case INT:
++					case POINTER:
++						move_value(fp, &ic->q1, &ic->z, typf);
++						break;
++
++					case LONG:
++						move_long_value(fp, &ic->q1, &ic->z, typf);
++						break;
++
++					case STRUCT:
++					case VOID:
++					case ARRAY:
++					assign_copy_struct:
++						push_addrof(fp, &ic->z, typf, &z);
++						push_addrof(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@copy_table ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " ");
++						emit_zop(fp, &z);
++						fprintf(fp, " 0%+ld;\n", ic->q2.val.vlong);
++						break;
++
++					default:
++						ierror(typf & NQ);
++				}
++				continue;
++
++			case ADDRESS: /* Fetch the address of something, always
++					 AUTO or STATIC */
++				i = voff(&ic->q1);
++				pop_value(fp, &ic->z, typf, &z);
++				fprintf(fp, "\t@add xp 0%+ld -> ", i);
++				emit_zop(fp, &z);
++				fprintf(fp, ";\n");
++				fin_zop(fp, &ic->z, typf, &z);
++				continue;
++
++			case PUSH: /* Push a value onto the stack */
++				fprintf(fp, "\t@sub xp 0%+ld -> xp;\n",
++					ic->q2.val.vlong);
++				//stackoffset += ic->q2.val.vlong;
++				stackparamadjust += ic->q2.val.vlong;
++
++				switch (ic->q2.val.vlong)
++				{
++					case 1:
++						push_value(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@storeb xp 0 ");
++						emit_zop(fp, &q1);
++						fprintf(fp, ";\n");
++						break;
++
++					case 2:
++						push_value(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@storew xp 0 ");
++						emit_zop(fp, &q1);
++						fprintf(fp, ";\n");
++						break;
++
++					default:
++						push_addrof(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@copy_table ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " xp 0%+ld;\n", ic->q2.val.vlong);
++						break;
++				}
++				continue;
++
++			case ADD: /* Add two numbers */
++			case SUB: /* Subtract two numbers */
++			case MULT: /* Multiply two numbers */
++			case DIV: /* Divide two numbers */
++			case MOD: /* Modulo two numbers */
++			case OR: /* Bitwise or */
++			case XOR: /* Bitwise xor */
++			case AND: /* Bitwise and */
++			case LSHIFT: /* Shift left */
++			case RSHIFT: /* Shift right */
++				switch (typf & NQ)
++				{
++					case CHAR:
++					case SHORT:
++					case INT:
++					case POINTER:
++						/* Second parameter first! */
++						push_value(fp, &ic->q2, typf, &q2);
++
++						if (code == RSHIFT)
++						{
++							fprintf(fp, "\t@sub 0 ");
++							emit_zop(fp, &q2);
++							fprintf(fp, " -> sp;\n");
++							q2.type = ZOP_STACK;
++						}
++
++						push_value(fp, &ic->q1, typf, &q1);
++						pop_value(fp, &ic->z, typf, &z);
++						//fprintf(fp, "\t");
++						//emit_object(fp, &ic->z, typf);
++						//fprintf(fp, " = ");
++						//emit_object(fp, &ic->q1, typf);
++						switch (code)
++						{
++							case ADD:
++								fprintf(fp, "\t@add ");
++								break;
++
++							case SUB:
++								fprintf(fp, "\t@sub ");
++								break;
++
++							case MULT:
++								fprintf(fp, "\t@mul ");
++								break;
++
++							case DIV:
++								if (typf & UNSIGNED)
++									fprintf(fp, "\t@call_vs __unsigned_div ");
++								else
++									fprintf(fp, "\t@div ");
++								break;
++
++							case MOD:
++								if (typf & UNSIGNED)
++									fprintf(fp, "\t@call_vs __unsigned_mod ");
++								else
++									fprintf(fp, "\t@mod ");
++								break;
++
++							case AND:
++								fprintf(fp, "\t@and ");
++								break;
++
++							case XOR:
++								fprintf(fp, "\t@call_vs __xor ");
++								break;
++
++							case OR:
++								fprintf(fp, "\t@or ");
++								break;
++
++							case LSHIFT:
++							case RSHIFT:
++								if (typf & UNSIGNED)
++									fprintf(fp, "\t@log_shift ");
++								else
++									fprintf(fp, "\t@art_shift ");
++								break;
++
++							default:
++								/* Should never get here! */
++								ierror(0);
++						}
++						emit_zop(fp, &q1);
++						fprintf(fp, " ");
++						emit_zop(fp, &q2);
++						fprintf(fp, " -> ");
++						emit_zop(fp, &z);
++						fprintf(fp, ";\n");
++						fin_zop(fp, &ic->z, typf, &z);
++						//emit_object(fp, &ic->q2, typf);
++						break;
++
++					case LONG:
++						/* Destination parameter first! */
++
++						push_addrof(fp, &ic->z, typf, &z);
++						push_addrof(fp, &ic->q2, typf, &q2);
++						push_addrof(fp, &ic->q1, typf, &q1);
++
++						fprintf(fp, "\t@call_vn __long_");
++						switch (code)
++						{
++							case ADD:
++								fprintf(fp, "add");
++								break;
++
++							case SUB:
++								fprintf(fp, "sub");
++								break;
++
++							case MULT:
++								fprintf(fp, "mul");
++								break;
++
++							case DIV:
++								if (typf & UNSIGNED)
++									fprintf(fp, "unsigned_div");
++								else
++									fprintf(fp, "div");
++								break;
++
++							case MOD:
++								if (typf & UNSIGNED)
++									fprintf(fp, "unsigned_mod");
++								else
++									fprintf(fp, "mod");
++								break;
++
++							case AND:
++								fprintf(fp, "and");
++								break;
++
++							case XOR:
++								fprintf(fp, "xor");
++								break;
++
++							case OR:
++								fprintf(fp, "or");
++								break;
++
++							case LSHIFT:
++								fprintf(fp, "lsl");
++								break;
++								
++							case RSHIFT:
++								if (typf & UNSIGNED)
++									fprintf(fp, "lsr");
++								else
++									fprintf(fp, "asr");
++								break;
++
++							default:
++								/* Should never get here! */
++								ierror(0);
++						}
++						fprintf(fp, " ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " ");
++						emit_zop(fp, &q2);
++						fprintf(fp, " ");
++						emit_zop(fp, &z);
++						fprintf(fp, ";\n");
++						break;
++
++					default:
++						ierror(0);
++				}
++				continue;
++
++			case CONVCHAR: /* Convert from char */
++				switch (typf & NU)
++				{
++					case CHAR:
++					case UNSIGNED|CHAR:
++					case UNSIGNED|SHORT:
++					case UNSIGNED|INT:
++					case SHORT:
++					case INT:
++						push_value(fp, &ic->q1, CHAR, &q1);
++						pop_value(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@log_shift ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " 8 -> sp;\n");
++						fprintf(fp, "\t@art_shift sp 0-8 -> ");
++						emit_zop(fp, &z);
++						fprintf(fp, ";\n");
++						fin_zop(fp, &ic->z, typf, &z);
++						break;
++					
++					case LONG:
++						push_value(fp, &ic->q1, INT, &q1);
++						push_addrof(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@call_vn __long_fromchar");
++						emit_zop(fp, &z);
++						fprintf(fp, " ");
++						emit_zop(fp, &q1);
++						fprintf(fp, ";\n");
++						break;
++
++					default:
++						ierror(0);
++				}
++				continue;
++
++			case CONVUCHAR: /* Convert from unsigned char */
++				switch (typf & NQ)
++				{
++					case CHAR:
++					case SHORT:
++					case INT:
++						push_value(fp, &ic->q1, UNSIGNED|CHAR, &q1);
++						pop_value(fp, &ic->z, typf, &z);
++						if ((z.type != ZOP_STACK) || (q1.type != ZOP_STACK))
++						{
++							emit_add(fp, &q1, &zop_zero, &z);
++#if 0
++							fprintf(fp, "\t@add ");
++							emit_zop(fp, &q1);
++							fprintf(fp, " 0 -> ");
++							emit_zop(fp, &z);
++							fprintf(fp, ";\n");
++#endif
++						}
++						fin_zop(fp, &ic->z, typf, &z);
++						break;
++					
++					case LONG:
++						push_value(fp, &ic->q1, UNSIGNED|CHAR, &q1);
++						push_addrof(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@call_vn __long_fromint");
++						emit_zop(fp, &z);
++						fprintf(fp, " 0 ");
++						emit_zop(fp, &q1);
++						fprintf(fp, ";\n");
++						break;
++						
++					default:
++						ierror(0);
++				}
++				continue;
++
++			case CONVSHORT: /* Convert from short */
++			case CONVINT: /* Convert from int */
++				switch (typf & NU)
++				{
++					case CHAR:
++					case UNSIGNED|CHAR:
++					case UNSIGNED|SHORT:
++					case UNSIGNED|INT:
++					case SHORT:
++					case INT:
++						push_value(fp, &ic->q1, INT, &q1);
++						pop_value(fp, &ic->z, typf, &z);
++						if ((z.type != ZOP_STACK) || (q1.type != ZOP_STACK))
++						{
++							emit_add(fp, &q1, &zop_zero, &z);
++#if 0
++							fprintf(fp, "\t@add ");
++							emit_zop(fp, &q1);
++							fprintf(fp, " 0 -> ");
++							emit_zop(fp, &z);
++							fprintf(fp, ";\n");
++#endif
++						}
++						fin_zop(fp, &ic->z, typf, &z);
++						break;
++
++					case LONG:
++						push_value(fp, &ic->q1, INT, &q1);
++						push_addrof(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@call_vn __long_fromint ");
++						emit_zop(fp, &z);
++						fprintf(fp, " ");
++						emit_zop(fp, &q1);
++						fprintf(fp, ";\n");
++						break;
++
++					case UNSIGNED|LONG:
++						push_value(fp, &ic->q1, INT, &q1);
++						push_addrof(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@call_vn __long_loadconst ");
++						emit_zop(fp, &z);
++						fprintf(fp, " 0 ");
++						emit_zop(fp, &q1);
++						fprintf(fp, ";\n");
++						break;
++					
++					default:
++						ierror(typf);
++				}
++				continue;
++
++			case CONVUSHORT: /* Convert from unsigned short */
++			case CONVUINT: /* Convert from unsigned int */
++			case CONVPOINTER: /* Convert from pointer */
++				switch (typf & NQ)
++				{
++					case CHAR:
++					case SHORT:
++					case INT:
++						push_value(fp, &ic->q1, INT, &q1);
++						pop_value(fp, &ic->z, typf, &z);
++						if ((z.type != ZOP_STACK) || (q1.type != ZOP_STACK))
++						{
++							emit_add(fp, &q1, &zop_zero, &z);
++#if 0
++							fprintf(fp, "\t@add ");
++							emit_zop(fp, &q1);
++							fprintf(fp, " 0 -> ");
++							emit_zop(fp, &z);
++							fprintf(fp, ";\n");
++#endif
++						}
++						fin_zop(fp, &ic->z, typf, &z);
++						break;
++
++					case LONG:
++						push_value(fp, &ic->q1, INT, &q1);
++						push_addrof(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@call_vn __long_loadconst ");
++						emit_zop(fp, &z);
++						fprintf(fp, " 0 ");
++						emit_zop(fp, &q1);
++						fprintf(fp, ";\n");
++						break;
++#if 0
++					case SHORT:
++					case INT:
++						fprintf(fp, "\t");
++						emit_object(fp, &ic->z, typf);
++						fprintf(fp, " = (");
++						emit_object(fp, &ic->q1, CHAR);
++						fprintf(fp, ") << 8 >> 8;\n");
++						break;
++#endif
++					
++					default:
++						printf("%X\n", typf);
++						ierror(0);
++				}
++				continue;
++
++			case CONVULONG: /* Convert from unsigned long */
++			case CONVLONG: /* Convert from long */
++				switch (typf & NQ)
++				{
++					case CHAR:
++						push_addrof(fp, &ic->q1, LONG, &q1);
++						pop_value(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@loadb ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " 3 -> ");
++						emit_zop(fp, &z);
++						fprintf(fp, ";\n");
++						fin_zop(fp, &ic->z, typf, &z);
++						break;
++
++					case SHORT:
++					case INT:
++						push_addrof(fp, &ic->q1, LONG, &q1);
++						pop_value(fp, &ic->z, typf, &z);
++						fprintf(fp, "\t@loadw ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " 1 -> ");
++						emit_zop(fp, &z);
++						fprintf(fp, ";\n");
++						fin_zop(fp, &ic->z, typf, &z);
++						break;
++					
++					default:
++						ierror(typf & NQ);
++				}
++				continue;
++
++			case COMPARE:
++				/* COMPARE is special. The next instruction is
++				 * always a branch.  The Z-machine does
++				 * branches in the form:
++				 *
++				 * @j{e,g,l} <var1> <var2> [~]@<label>
++				 *
++				 * However, we don't know what short of branch
++				 * to emit until the next instruction (which is
++				 * the IC for a branch). So we have to stash
++				 * the zops that we're using for the
++				 * compare here, for use later. This is done
++				 * using the globals compare1 and compare2.
++				 */
++
++				switch (typf & NU)
++				{
++					case CHAR:
++					case SHORT:
++					case INT:
++					case POINTER:
++						/* Second parameter first! */
++						push_value(fp, &ic->q2, typf, &compare2);
++						push_value(fp, &ic->q1, typf, &compare1);
++						break;
++
++					case UNSIGNED|CHAR:
++					case UNSIGNED|SHORT:
++					case UNSIGNED|INT:
++						/* Because the Z-machine only
++						 * has signed comparisons, we
++						 * need a dodgy algorithm to
++						 * do this, which works as
++						 * follows: in the signed
++						 * domain, 0-7FFF compares
++						 * greater than 8000-FFFF. In
++						 * the unsigned domain, it's
++						 * the other way around. So,
++						 * by flipping the sign bits
++						 * we do the logical
++						 * equivalent of shifting the
++						 * unsigned range up/down by
++						 * 8000 which makes it fit
++						 * the signed range. There.
++						 * Did you understand that?
++						 * Neither did I, the first
++						 * few times it was explained
++						 * to me. */
++						read_reg(fp, &ic->q2, typf, 0);
++						fprintf(fp, "\t@add sp $8000 -> sp;\n");
++						read_reg(fp, &ic->q1, typf, 0);
++						fprintf(fp, "\t@add sp $8000 -> sp;\n");
++						compare1.type = ZOP_STACK;
++						compare2.type = ZOP_STACK;
++						break;
++
++					case LONG:
++						push_addrof(fp, &ic->q2, typf, &q2);
++						push_addrof(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@call_vs __long_compare ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " ");
++						emit_zop(fp, &q2);
++						fprintf(fp, " -> sp;\n");
++						compare1.type = ZOP_STACK;
++						compare2.type = ZOP_CONSTANT;
++						compare2.val.constant = 0;
++						break;
++
++					case UNSIGNED|LONG:
++						push_addrof(fp, &ic->q2, typf, &q2);
++						push_addrof(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@call_vs __long_unsigned_compare ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " ");
++						emit_zop(fp, &q2);
++						fprintf(fp, " -> sp;\n");
++						compare1.type = ZOP_STACK;
++						compare2.type = ZOP_CONSTANT;
++						compare2.val.constant = 0;
++						break;
++
++					default:
++						ierror(typf & NQ);
++				}
++				continue;
++
++			case TEST:
++				/* TEST is a special COMPARE. It takes one
++				 * parameter and always tests it against 0; it
++				 * is guaranteed to be followed by BNE or BEQ.
++				 * */
++
++				switch (typf & NQ)
++				{
++					case CHAR:
++					case SHORT:
++					case INT:
++					case POINTER:
++						push_value(fp, &ic->q1, typf, &compare1);
++						compare2.type = ZOP_CONSTANT;
++						compare2.val.constant = 0;
++						break;
++
++					case LONG:
++						push_addrof(fp, &ic->q1, typf, &q1);
++						fprintf(fp, "\t@call_vs __long_compare ");
++						emit_zop(fp, &q1);
++						fprintf(fp, " ");
++						q2.type = ZOP_CONSTANTADDR;
++						q2.val.constant = addconstant(0);
++						emit_zop(fp, &q2);
++						fprintf(fp, " -> sp;\n", i);
++						compare1.type = ZOP_STACK;
++						compare2.type = ZOP_CONSTANT;
++						compare2.val.constant = 0;
++						break;
++
++					default:
++						ierror(typf & NQ);
++				}
++				continue;
++
++			case BEQ:
++			case BNE:
++			case BLT:
++			case BGE:
++			case BLE:
++			case BGT:
++			{
++				static int branchlabel = 0;
++
++				fprintf(fp, "\t@j");
++				switch (code)
++				{
++					case BNE:
++					case BEQ:	fprintf(fp, "e ");	break;
++					case BLT:
++					case BGE:	fprintf(fp, "l ");	break;
++					case BGT:
++					case BLE:	fprintf(fp, "g ");	break;
++				}
++
++				emit_zop(fp, &compare1);
++				fprintf(fp, " ");
++				emit_zop(fp, &compare2);
++				fprintf(fp, " ?");
++
++				if (g_flags[3] & USEDFLAG)
++				{
++					if (!((code == BNE) || (code == BGE) || (code == BLE)))
++						fprintf(fp, "~");
++					fprintf(fp, "LL%d;\n", branchlabel);
++					fprintf(fp, "\tjump %s%d;\n", labelprefix, typf);
++					fprintf(fp, ".LL%d;\n", branchlabel++);
++				}
++				else
++				{
++					if ((code == BNE) || (code == BGE) || (code == BLE))
++						fprintf(fp, "~");
++					fprintf(fp, "%s%d;\n", labelprefix, typf);
++				}
++				continue;
++			}
++
++			case CALL:
++			{
++#if 0
++				/* Calculate the amount of stack to reserve for
++				 * the return parameter. ints and smaller go in
++				 * the return register. */
++
++				stackcallparamsize = szof(ic->q1.v->vtyp->next);
++				if (stackcallparamsize <= sizetab[INT])
++					stackcallparamsize = 0;
++
++				if (stackcallparamsize)
++					fprintf(fp, "\t@sub xp %d -> xp;\n",
++						stackcallparamsize);
++#endif
++
++				/* Is this actually an inline assembly function? */
++
++				if ((ic->q1.flags & VAR) &&
++				    ic->q1.v->fi &&
++				    ic->q1.v->fi->inline_asm)
++				{
++					/* Yes. Emit the assembly code. */
++
++					fprintf(fp, "%s", ic->q1.v->fi->inline_asm);
++				}
++				else
++				{
++					/* No; so emit a call. */
++				
++					push_value(fp, &ic->q1, typf, &q1);
++					fprintf(fp, "\t@call_vs2 ");
++					emit_zop(fp, &q1);
++					fprintf(fp, " xp r0 r1 r2 r3 r4 r5 -> r0;\n");
++				}
++
++				//stackcalladjustment = 1;
++
++				/* If any parameters have been pushed, adjust
++				 * the stack to pop them. */
++
++				if (stackparamadjust)
++				{
++					fprintf(fp, "\t@add xp 0%+ld -> xp;\n",
++						stackparamadjust);
++					//stackoffset -= stackparamadjust;
++					stackparamadjust = 0;
++				}
++				continue;
++			}
++
++			default:
++				ierror(code);
++		}
++						
++	}
++
++	/* We really ought to tidy the stack up; but there's no need, because
++	 * the old value of xp will be restored when the function exits. */
++
++    	//if (stackframe)
++	//	fprintf(fp, "\t@add xp %ld -> xp;\n", stackframe);
++	
++	fprintf(fp, "\t@ret r0;\n");
++	fprintf(fp, "]\n");
++
++//    function_bottom(fp, func, loff);
++}
++
++int shortcut(int code, int typ)
++{
++    return(0);
++}
++
++// Add a constant to the constant pool.
++
++static int addconstant(zlong value)
++{
++	struct constant* c;
++	
++	/* Check to see if the constant's already in the pool. */
++
++	c = constantlist;
++	while (c)
++	{
++		if (c->value == value)
++			return c->id;
++		c = c->next;
++	}
++
++	/* It's not; add it. */
++	
++	c = malloc(sizeof(struct constant));
++	c->next = constantlist;
++	c->id = constantnum++;
++	c->value = value;
++	constantlist = c;
++	return c->id;
++}
++
++void cleanup_cg(FILE *fp)
++{
++	struct fixup* fixup = fixuplist;
++
++	/* Have we actually emitted anything? */
++
++	if (!fp)
++		return;
++
++	reflower(fp);
++
++	/* Emit the constant pool. */
++
++	{
++		struct constant* constant = constantlist;
++
++		while (constant)
++		{
++			fprintf(fp, "Array CONSTANT_%s_%ld -->\n",
++				modulename, constant->id);
++			fprintf(fp, " 0%+ld 0%+ld;\n",
++				xword(constant->value, 1),
++				xword(constant->value, 0));
++			constant = constant->next;
++		}
++	}
++
++	/* Emit the code to initialise the data area. */
++
++	{
++		struct fixup* fixup = fixuplist;
++
++		fprintf(fp, "[ __init_vars_%s;\n", modulename);
++		while (fixup)
++		{
++			fprintf(fp, "\t@add 0%+ld ", fixup->offset);
++
++			switch (fixup->value.type)
++			{
++				case STATIC:
++					fprintf(fp, "STATIC_%s_%ld -> sp;\n",
++						modulename, fixup->value.val.number);
++					break;
++
++				case EXTERN:
++					fprintf(fp, "_%s -> sp;\n",
++						fixup->value.val.identifier);
++					break;
++
++				default:
++					ierror(0);
++			}
++
++			switch (fixup->identifier.type)
++			{
++				case STATIC:
++					fprintf(fp, "\t@storew STATIC_%s_%ld 0%+ld sp;\n",
++						modulename, fixup->identifier.val.number,
++						fixup->identifier.offset);
++					break;
++
++				case EXTERN:
++					fprintf(fp, "\t@storew _%s 0%+ld sp;\n",
++						fixup->identifier.val.identifier,
++						fixup->identifier.offset);
++					break;
++
++				default:
++					ierror(0);
++			}
++
++			fixup = fixup->next;
++		}
++		fprintf(fp, "];\n");
++	}
++}
++
++/* The code generator's asking us to pass a parameter in a register. */
++
++int reg_parm(struct reg_handle *rh, struct Typ *typ, int vararg)
++{
++	/* Vararg parameters never go in registers. */
++
++	if (vararg)
++		return 0;
++
++	/* Will the parameter fit? */
++
++	if (sizetab[typ->flags & NQ] > 2)
++		return 0;
++
++	/* Still enough registers? */
++
++	if (rh->reg >= NUM_REGPARMS+USERREG)
++		return 0;
++
++	return (rh->reg++);
++}
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/machine.dt vbcc-0.7.orig/machines/z/machine.dt
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/machine.dt	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/machines/z/machine.dt	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,11 @@
++S8BS
++S8BU
++S16BSLE S16BSBE
++S16BULE S16BUBE
++S16BSLE S16BSBE
++S16BULE S16BUBE
++S32BSLE S32BSBE
++S32BULE S32BUBE
++S32BIEEEBE S32BIEEELE
++S64BIEEEBE S64BIEEELE
++S16BULE S16BUBE
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/machine.h vbcc-0.7.orig/machines/z/machine.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/machines/z/machine.h	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/machines/z/machine.h	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,77 @@
++/* Z-machine code generator
++ * David Given
++ */
++
++#include "dt.h"
++
++/* Machine specific addressing-modes. Not used. */
++
++struct AddressingMode{
++	int never_used;
++};
++
++/* The number of registers we support. We don't really have any, but we
++ * use local variables instead; we have 14.
++ */
++
++#define MAXR 14
++
++/* Number of command-line options we accept. */
++
++#define MAXGF 6
++
++/* If this is set to zero vbcc will not generate ICs where the target operand
++ * is the same as the 2nd source operand. This can sometimes simplify the
++ * code-generator, but usually the code is better if the code-generator allows
++ * it. 
++ */
++
++#define USEQ2ASZ 1
++
++/* The smallest and largest integer type that can be added to a pointer. */
++
++#define MINADDI2P INT
++#define MAXADDI2P INT
++
++/* Big-endian? */
++
++#define BIGENDIAN 1
++
++/* Little-endian? */
++
++#define LITTLEENDIAN 0
++
++/* If switch-statements should be generated as a sequence of SUB,TST,BEQ ICs
++ * rather than COMPARE,BEQ ICs set this to 1.  This can yield better code on
++ * some machines.
++ */
++
++#define SWITCHSUBS 0
++
++/* In optimizing compilation certain library memcpy/strcpy-calls with length
++ * known at compile-time will be inlined using an ASSIGN-IC if the size is less
++ * or equal to INLINEMEMCPY.  The type used for the ASSIGN-IC will be
++ * UNSIGNED|CHAR. On the Z-machine, memcpy can be done in `hardware' with the
++ * @copy_table opcode, so always inline them if possible.
++ */
++
++#define INLINEMEMCPY 65536
++
++/* Do we want to pass parameters to functions in registers? */
++
++#define HAVE_REGPARMS
++
++/* If so, how many? Max 7 due to the architecture, but one is always xp. */
++
++#define NUM_REGPARMS 6
++
++/* This structure is used to keep track of where register parameters go. */
++
++struct reg_handle {
++	int reg;
++};
++
++/* Do we want to use zuint for size_t rather than the default zulong? */
++
++#define HAVE_INT_SIZET 1
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/main.c vbcc-0.7.orig/main.c
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/main.c	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/main.c	Sat Sep 19 22:54:10 2015
+@@ -5,7 +5,7 @@
+ static char FILE_[]=__FILE__;
+ 
+ int endok=1;
+-int line,errors;
++int line,errors=0;
+ 
+ char *multname[]={"","s"};
+ void raus(void)
+@@ -194,6 +194,7 @@
+     killsp();
+     nesting=-1;enter_block();
+     translation_unit();
++	return;
+ }
+ int mcmp(const char *s1,const char *s2)
+ /*  Einfachere strcmp-Variante.     */
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/preproc.c vbcc-0.7.orig/preproc.c
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/preproc.c	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/preproc.c	Sat Sep 19 22:54:10 2015
+@@ -1593,6 +1593,7 @@
+     }
+     if (DEBUG & 32)
+         printf("ParseIdent falls of\n");
++	return;
+ }
+ 
+ 
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/alpha/include/stdarg.h vbcc-0.7.orig/share/vbcc/arch/alpha/include/stdarg.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/alpha/include/stdarg.h	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/arch/alpha/include/stdarg.h	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,44 @@
++/* alpha/stdarg.h
++ * vbcc is (c) in 1995-99 by Volker Barthelmann. All code is written by me
++ * and may be freely redistributed as long as no modifications are made
++ * and nothing is charged for it.
++ * Non-commercial usage of vbcc is allowed without any restrictions.
++ * Commercial usage needs my written consent.
++ *
++ * Sending me money, gifts, postcards etc. would of course be very nice
++ * and may encourage further development of vbcc, but is not legally or
++ * morally necessary to use vbcc.
++ */
++
++#ifndef STDARG_H
++#define STDARG_H
++
++typedef struct {
++  char *regbase;
++  char *membase;
++  int arg;
++} va_list;
++
++char *__va_start(void);
++int __va_fixargs(void);
++
++#define va_start(vl,dummy) \
++(vl.arg=__va_fixargs(),vl.regbase=__va_start(),vl.membase=vl.regbase+(6-vl.arg)*16)
++
++#define va_end(vl) (vl.regbase=vl.membase=0)
++
++#define __va_size(type) ((sizeof(type)+7)/8*8)
++#define va_arg(vl,type) \
++ ( \
++  ((__typeof(type)&15)<=8&&++vl.arg<=6) ? \
++   ( \
++    ((__typeof(type)&15)==5||(__typeof(type)&15)==6) ? \
++      (vl.regbase+=16,*(type *)(vl.regbase-8)) \
++    : \
++      (vl.regbase+=16,*(type *)(vl.regbase-16)) \
++   ) \
++  : \
++   (vl.membase+=__va_size(type),*(type *)(vl.membase-__va_size(type))) \
++ )
++
++#endif
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/c16x/include/stdarg.h vbcc-0.7.orig/share/vbcc/arch/c16x/include/stdarg.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/c16x/include/stdarg.h	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/arch/c16x/include/stdarg.h	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,18 @@
++/* alpha/c16x.h
++ * vbcc is (c) in 1995-99 by Volker Barthelmann. All code is written by me
++ * and may be freely redistributed as long as no modifications are made
++ * and nothing is charged for it.
++ * Non-commercial usage of vbcc is allowed without any restrictions.
++ * Commercial usage needs my written consent.
++ *
++ * Sending me money, gifts, postcards etc. would of course be very nice
++ * and may encourage further development of vbcc, but is not legally or
++ * morally necessary to use vbcc.
++ */
++
++#ifndef STDARG_H
++#define STDARG_H
++
++#error stdarg.h is not supported on the C16X
++
++#endif
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/i386/include/stdarg.h vbcc-0.7.orig/share/vbcc/arch/i386/include/stdarg.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/i386/include/stdarg.h	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/arch/i386/include/stdarg.h	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,24 @@
++/* stdarg.h
++ * vbcc is (c) in 1995-99 by Volker Barthelmann. All code is written by me
++ * and may be freely redistributed as long as no modifications are made
++ * and nothing is charged for it.
++ * Non-commercial usage of vbcc is allowed without any restrictions.
++ * Commercial usage needs my written consent.
++ *
++ * Sending me money, gifts, postcards etc. would of course be very nice
++ * and may encourage further development of vbcc, but is not legally or
++ * morally necessary to use vbcc.
++ */
++
++#ifndef STDARG_H
++#define STDARG_H
++
++typedef unsigned char *va_list;
++
++#define va_start(ap, lastarg) ((ap) = (va_list)(&lastarg + 1))
++#define va_arg(ap, type) ((ap) += \
++	(sizeof(type)<sizeof(int)?sizeof(int):sizeof(type)), ((type *)(ap))[-1])
++#define va_end(ap) ((ap) = 0L)
++
++#endif
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/m68k/include/stdarg.h vbcc-0.7.orig/share/vbcc/arch/m68k/include/stdarg.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/m68k/include/stdarg.h	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/arch/m68k/include/stdarg.h	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,24 @@
++/* alpha/m68k.h
++ * vbcc is (c) in 1995-99 by Volker Barthelmann. All code is written by me
++ * and may be freely redistributed as long as no modifications are made
++ * and nothing is charged for it.
++ * Non-commercial usage of vbcc is allowed without any restrictions.
++ * Commercial usage needs my written consent.
++ *
++ * Sending me money, gifts, postcards etc. would of course be very nice
++ * and may encourage further development of vbcc, but is not legally or
++ * morally necessary to use vbcc.
++ */
++
++#ifndef STDARG_H
++#define STDARG_H
++
++typedef unsigned char *va_list;
++
++#define va_start(ap, lastarg) ((ap) = (va_list)(&lastarg + 1))
++#define va_arg(ap, type) ((ap) += \
++	(sizeof(type)<sizeof(int)?sizeof(int):sizeof(type)), ((type *)(ap))[-1])
++#define va_end(ap) ((ap) = 0L)
++
++#endif
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/ppc/include/stdarg.h vbcc-0.7.orig/share/vbcc/arch/ppc/include/stdarg.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/ppc/include/stdarg.h	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/arch/ppc/include/stdarg.h	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,61 @@
++/* alpha/m68k.h
++ * vbcc is (c) in 1995-99 by Volker Barthelmann. All code is written by me
++ * and may be freely redistributed as long as no modifications are made
++ * and nothing is charged for it.
++ * Non-commercial usage of vbcc is allowed without any restrictions.
++ * Commercial usage needs my written consent.
++ *
++ * Sending me money, gifts, postcards etc. would of course be very nice
++ * and may encourage further development of vbcc, but is not legally or
++ * morally necessary to use vbcc.
++ */
++
++#ifndef STDARG_H
++#define STDARG_H
++
++typedef struct {
++  int gpr;
++  int fpr;
++  char *regbase;
++  char *membase;
++} va_list;
++
++char *__va_start(void);
++char *__va_regbase(void);
++int __va_fixedgpr(void);
++int __va_fixedfpr(void);
++
++#define va_start(vl,dummy) \
++  ( \
++    vl.gpr=__va_fixedgpr(), \
++    vl.fpr=__va_fixedfpr(), \
++    vl.regbase=__va_regbase(), \
++    vl.membase=__va_start() \
++  )
++
++#define va_end(vl) (vl.regbase=vl.membase=0)
++
++#define __va_size(type) ((sizeof(type)+3)/4*4)
++#define va_arg(vl,type) \
++  (__typeof(type)&15)>8? \
++    (vl.membase+=__va_size(type),((type*)vl.membase)[-1]) \
++  : \
++   ( \
++    (((__typeof(type)&15)==5||(__typeof(type)&15)==6)) ? \
++     ( \
++      ++vl.fpr<=8 ? \
++	 ((double*)(vl.regbase+32))[vl.fpr] \
++      : \
++	(vl.membase+=__va_size(type),((type*)vl.membase)[-1]) \
++     ) \
++    : \
++     ( \
++      ++vl.gpr<=8 ? \
++	((int*)(vl.regbase+0))[vl.gpr] \
++      : \
++	(vl.membase+=__va_size(type),((type*)vl.membase)[-1]) \
++     ) \
++   ) \
++
++#endif
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/z/include/stdarg.h vbcc-0.7.orig/share/vbcc/arch/z/include/stdarg.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/z/include/stdarg.h	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/arch/z/include/stdarg.h	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,38 @@
++/* z/stdarg.h
++ * Copyright (c) 2001, David Given
++ * All rights reserved.
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++ * DEALINGS IN THE SOFTWARE.
++ */
++
++#ifndef STDARG_H
++#define STDARG_H
++
++typedef char* va_list;
++extern va_list __va_start; /* magic */
++
++#define va_start(ap, lastarg) \
++    ((ap) = __va_start)
++#define va_arg(ap, type) \
++    (((ap) += (sizeof(type)<sizeof(int)) ? sizeof(int) : sizeof(type)), \
++    ((type*)ap)[-1])
++#define va_end(ap) ((ap) = 0)
++
++#endif
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/z/runtime.s vbcc-0.7.orig/share/vbcc/arch/z/runtime.s
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/arch/z/runtime.s	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/arch/z/runtime.s	Sat Sep 19 22:56:54 2015
+@@ -0,0 +1,508 @@
++! Z-machine C runtime
++! Copyright (c) 2001, David Given
++! All rights reserved.
++!
++! Permission is hereby granted, free of charge, to any person obtaining a
++! copy of this software and associated documentation files (the "Software"),
++! to deal in the Software without restriction, including without limitation
++! the rights to use, copy, modify, merge, publish, distribute, sublicense,
++! and/or sell copies of the Software, and to permit persons to whom the
++! Software is furnished to do so, subject to the following conditions:
++!
++! The above copyright notice and this permission notice shall be included in
++! all copies or substantial portions of the Software.
++!
++! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++! IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++! FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++! AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++! LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++! DEALINGS IN THE SOFTWARE.
++
++! There's an Inform bug that stops the @not opcode from assembling correctly,
++! so we have to use a conventional expression.
++
++[ __not q1;
++	return ~q1;
++];
++
++! And the Z-machine doesn't have xor. How bizarre.
++
++[ __xor q1 q2  t;
++	return (q1 & (~q2)) | ((~q1) & q2);
++];
++
++! Unsigned arithmetic is hard. These helper functions do it for us.
++! Thanks to Jay Foad for the algorithm for this.
++
++[ __unsigned_div q1 q2  t;
++	if (q1 == 0)
++		return q1;
++	else if (q2 == 0)
++	{
++		print "[zlibc error: division by zero in __unsigned_div]";
++		return 0;
++	}
++	else if (q2 == 1)
++		return q1;
++	else if ((q1 > 0) && (q2 > 0))
++		return q1/q2;
++		
++	! Optimisation query: given that when executing Z-machine instructions,
++	! the decoding is by far the slowest part of the process, is it
++	! useful to have these special cases?
++
++	!else if ((q1-32768) < (q2-32768))
++	!	return 0;
++
++	else if (q1 == q2)
++		return 1;
++	else if (q2 < 0)
++	{
++		! If q2 is high, then the result can only be 0 or 1.
++		! The only way it can be 1 is if q1 > q2.
++		return ((q1-32768) > (q2-32768));
++	}
++
++	! Lose one bit of precision, and do the calculation.
++
++	@log_shift q1 0-1 -> t;
++	t = t / q2;
++	@log_shift t 1 -> t;
++	
++	! Now multiply back out and calculate the remainder. This tells
++	! us how much to modify the result by, to restore lost precision.
++
++	!print "{", t, "}";
++	!print "[", (q1 - t*q2), ">", q2, "]";
++
++	if (((q1 - t*q2)-32768) >= (q2-32768))
++		t++;
++	return t;
++];
++	
++[ __unsigned_mod q1 q2  t;
++	t = __unsigned_div(q1, q2) * q2;
++	return q1 - t;
++];
++
++! These wrapper functions do all the long arithmetic.
++
++Array __long_temp1 -> 4;
++Array __long_temp2 -> 4;
++Array __long_temp3 -> 4;
++
++[ __long_copy q1 z; ! z = q1
++	z-->0 = q1-->0;
++	z-->1 = q1-->1;
++];
++
++[ __long_loadconst z hi lo; ! z = hi.lo
++	z-->0 = hi;
++	z-->1 = lo;
++];
++
++[ __long_fromint z q1; ! z = (long)q1, with sign extension
++	z-->1 = q1;
++	if (q1 < 0)
++		z-->0 = -1;
++	else
++		z-->0 = 0;
++];
++
++[ __long_and q1 q2 z;
++	z-->0 = q1-->0 & q2-->0;
++	z-->1 = q1-->1 & q2-->1;
++];
++
++[ __long_or q1 q2 z;
++	z-->0 = q1-->0 | q2-->0;
++	z-->1 = q1-->1 | q2-->1;
++];
++
++[ __long_asr q1 q2 z  s t;
++	if ((q2-->0 ~= 0) || (((q2-->1)-32767) > (31-32767)))
++	{
++		! All bits shifted off; so we just propagate the sign.
++
++		if (q2-->0 & $8000)
++		{
++			z-->0 = -1;
++			z-->1 = -1;
++		}
++		else
++		{
++			z-->0 = 0;
++			z-->1 = 0;
++		}
++
++		return;
++	}
++	
++	q2 = -(q2-->1 & $1F);
++	s = 16 + q2;
++
++	t = q1-->1;
++	@log_shift t q2 -> t;
++	z-->1 = t;
++
++	t = q1-->0;
++	@log_shift t s -> t;
++	z-->1 = z-->1 | t;
++
++	t = q1-->0;
++	@art_shift t q2 -> t;
++	z-->0 = t;
++];
++	
++[ __long_lsr q1 q2 z  s t;
++	if ((q2-->0 ~= 0) || ((q2-->1-32767) > (31-32767)))
++	{
++		! All bits shifted off; the result is zero.
++
++		z-->0 = 0;
++		z-->1 = 0;
++		return;
++	}
++	
++	q2 = -(q2-->1 & $1F);
++	s = 16 + q2;
++
++	t = q1-->1;
++	@log_shift t q2 -> t;
++	z-->1 = t;
++
++	t = q1-->0;
++	@log_shift t s -> t;
++	z-->1 = z-->1 | t;
++
++	t = q1-->0;
++	@log_shift t q2 -> t;
++	z-->0 = t;
++];
++	
++[ __long_neg q1 z  a b;
++	a = ~(q1-->0);
++	b = ~(q1-->1) + 1;
++	if (~~b)
++		a++;
++	z-->0 = a;
++	z-->1 = b;
++];
++
++[ __long_xor q1 q2 z  a b;
++	a = q1-->0;
++	b = q2-->0;
++	z-->0 = (a & (~b)) | ((~a) & b);
++
++	a = q1-->1;
++	b = q2-->1;
++	z-->1 = (a & (~b)) | ((~a) & b);
++];
++
++[ __long_add q1 q2 z  a b c cc;
++	! Add the low word, and detect overflow.
++
++	a = q1-->1;
++	b = q2-->1;
++	c = a + b;
++	z-->1 = c;
++	@log_shift a 0-15 -> a;
++	@log_shift b 0-15 -> b;
++	@log_shift c 0-15 -> c;
++	cc = a;
++	if ((~~a) && b && (~~c))
++		cc = 1;
++	else if (a && b && (~~c))
++		cc = 0;
++
++	! Add the high word, plus one if the low word overflowed.
++
++	z-->0 = q1-->0 + q2-->0 + cc;
++];
++
++[ __long_sub q1 q2 z  a b c cc;
++	! Subtract the low word, and detect overflow.
++
++	a = q1-->1;
++	b = q2-->1;
++	c = a - b;
++	z-->1 = c;
++	@log_shift a 0-15 -> a;
++	@log_shift b 0-15 -> b;
++	@log_shift c 0-15 -> c;
++
++	! Carry table:
++	! a b c  c
++	! 0 0 0  0
++	! 0 0 1	 1
++	! 0 1 0	 1
++	! 0 1 1	 1
++	! 1 0 0	 0
++	! 1 0 1	 0
++	! 1 1 0	 0
++	! 1 1 1	 1
++
++	cc = ~~a;
++	if ((~~a) && (~~b) && (~~c))
++		cc = 0;
++	else if (a && b && c)
++		cc = 1;
++
++	! Subtract the high word, plus one if the low word overflowed.
++
++	z-->0 = q1-->0 - q2-->0 - cc;
++];
++
++! Algorithm converted from MIPS assembly, at:
++! http://www.cz3.nus.edu.sg/~wangjs/CZ101/assembly-examples/divide.s
++[ __long_unsigned_divmod q1 q2 d r  r1 r2 r3 r4 count t1 t2;
++	! Check for division by zero.
++
++	if ((~~(q2-->0)) && (~~(q2-->1)))
++	{
++		print "[zlibc error: division by zero in __long_unsigned_divmod]";
++		return 0;
++	}
++
++	count = 0;
++	r1 = 0;
++	r2 = 0;
++	r3 = q1-->0;
++	r4 = q1-->1;
++	!print "[q1=", r3, " ", r4, " q2=", q2-->0, " ", q2-->1, " ";
++
++	do {
++		count++;
++
++		! Shift r1..r4 left by one bit.
++
++		@log_shift r4 0-15 -> t1;
++		@log_shift r4 1 -> r4;
++
++		@log_shift r3 0-15 -> t2;
++		@log_shift r3 1 -> r3;
++		@or r3 t1 -> r3;
++
++		@log_shift r2 0-15 -> t1;
++		@log_shift r2 1 -> r2;
++		@or r2 t2 -> r2;
++
++		@log_shift r1 1 -> r1;
++		@or r1 t1 -> r1;
++		
++		! Subtract divisor from r1..r2.
++
++		__long_temp3-->0 = r1;
++		__long_temp3-->1 = r2;
++		__long_sub(__long_temp3, q2, __long_temp3);
++
++		! Is the remainder non-negative?
++
++		if (__long_temp3-->0 >= 0)
++		{
++			! Yes. Quotient gets a one; commit subtraction.
++
++			r1 = __long_temp3-->0;
++			r2 = __long_temp3-->1;
++
++			r4 = r4 | 1;
++			!print "1";
++		}
++		!else print "0";
++		! Otherwise the quotient gets a zero and the subtraction is not
++		! committed. No operation.
++	} until (count == 32);
++
++	! Save results.
++
++	!print " r=", r1, " ", r2;
++	if (r)
++	{
++		r-->0 = r1;
++		r-->1 = r2;
++	}
++	!print " d=", r3, " ", r4, "]";
++	if (d)
++	{
++		d-->0 = r3;
++		d-->1 = r4;
++	}
++];
++
++[ __long_div q1 q2 z  t sign;
++	! Calculate final sign, and convert parameters to unsigned.
++
++	t = q1-->0;
++	if (t < 0)
++		sign = 1;
++	__long_temp1-->0 = t & $7FFF;
++	__long_temp1-->1 = q1-->1;
++
++	t = q2-->0;
++	if (t < 0)
++		sign = ~~sign;
++	__long_temp2-->0 = t & $7FFF;
++	__long_temp2-->1 = q2-->1;
++
++	! Do the actual divide.
++
++	__long_unsigned_divmod(__long_temp1, __long_temp2, z, 0);
++
++	! Adjust sign.
++
++	if (sign)
++		__long_neg(z);
++];
++
++[ __long_mod q1 q2 z  t sign;
++	! Calculate final sign, and convert parameters to unsigned.
++
++	t = q1-->0;
++	if (t < 0)
++		sign = 1;
++	__long_temp1-->0 = t & $7FFF;
++	__long_temp1-->1 = q1-->1;
++
++	t = q2-->0;
++	if (t < 0)
++		sign = ~~sign;
++	__long_temp2-->0 = t & $7FFF;
++	__long_temp2-->1 = q2-->1;
++
++	! Do the actual modulo.
++
++	__long_unsigned_divmod(__long_temp1, __long_temp2, 0, z);
++
++	! Adjust sign.
++
++	if (sign)
++		__long_neg(z);
++];
++
++[ __long_unsigned_div q1 q2 z;
++	__long_unsigned_divmod(q1, q2, z, 0);
++];
++
++[ __long_unsigned_mod q1 q2 z;
++	__long_unsigned_divmod(q1, q2, 0, z);
++];
++
++! Algorithm my own. Probably buggy (although it passes every test I've
++! thrown at it).
++[ __long_mul q1 q2 z  a b c d aa bb cc dd sign t;
++	! What we're doing here is long multiplication in base 256; so each
++	! digit is a byte.
++	!
++	!    A   B   C   D
++	! *  A'  B'  C'  D'
++	! = ---------------
++	!   AD' BD' CD' DD' +
++	!   BC' CC' DC'     +
++	!   CB' DB'         +
++	!   DA'
++	!
++	! We need to add up the columns, remembering to overflow into the
++	! next column. (Don't forget to make everything positive.)
++
++	if (q1->0 >= $80)
++	{
++		! q1 is negative.
++		__long_neg(q1, __long_temp1);
++		q1 = __long_temp1;
++		sign = 1;
++	}
++
++	a  = q1->0;
++	b  = q1->1;
++	c  = q1->2;
++	d  = q1->3;
++
++	if (q2->0 >= $80)
++	{
++		! q2 is negative.
++		__long_neg(q2, __long_temp1);
++		q2 = __long_temp1;
++		sign = ~~sign;
++	}
++	
++	aa = q2->0;
++	bb = q2->1;
++	cc = q2->2;
++	dd = q2->3;
++
++	! D column.
++
++	t = d*dd;
++	z->3 = t;
++	@log_shift t 0-8 -> t;
++
++	! C column.
++
++	t = t + c*dd + d*cc;
++	z->2 = t;
++	@log_shift t 0-8 -> t;
++
++	! B column.
++	t = t + b*dd + c*cc + d*bb;
++	z->1 = t;
++	@log_shift t 0-8 -> t;
++
++	! A column.
++	t = t + a*dd + b*cc + c*bb + d*aa;
++	!t = t & $7F;
++	z->0 = t;
++
++	! Apply sign bit.
++
++	if (sign)
++		__long_neg(z, z);
++
++	! LongMul can't use the same output as one of its inputs.
++	!LongMul(__long_temp1, q1, q2);
++	!@copy_table __long_temp1 z 4;
++];
++
++[ __long_compare q1 q2  a b;
++	a = q1-->0;
++	b = q2-->0;
++	if (a == b)
++	{
++		a = q1-->1 - 32768;
++		b = q2-->1 - 32768;
++	}
++
++	if (a > b)
++		return 1;
++	if (a < b)
++		return -1;
++	return 0;
++];
++
++[ __long_unsigned_compare q1 q2  a b;
++	a = q1-->0 - 32768;
++	b = q2-->0 - 32768;
++	if (a == b)
++	{
++		a = q1-->1 - 32768;
++		b = q2-->1 - 32768;
++	}
++
++	if (a > b)
++		return 1;
++	if (a < b)
++		return -1;
++	return 0;
++];
++	
++! And finally, the routine that calls a C function from Inform.
++
++Constant __c_stack_size 2048;
++Array __c_stack -> __c_stack_size;
++
++[ cinvoke func l0 l1 l2 l3 l4 l5  xp;
++	xp = __c_stack + __c_stack_size;
++	return func(xp, l0, l1, l2, l3, l4, l5);
++];
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/alpha vbcc-0.7.orig/share/vbcc/conf/alpha
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/alpha	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/conf/alpha	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,8 @@
++-pp=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/alpha/include -D__ALPHA__ -+ %s %s %s
++-ppv=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/alpha/include -D__ALPHAI386__ -+ %s %s %s
++-cc=/usr/lib/vbcc/vbccalpha -quiet %s -o=%s %s -O=%ld
++-ccv=/usr/lib/vbcc/vbccalpha -I/usr/share/vbcc/arch/alpha/include %s -o=%s %s -O=%ld
++-as=echo "Don't know how to assemble Alpha code" 1>&2; exit 0
++-ld=echo "Don't know how to link Alpha code" 1>&2; exit 0
++-rm=rm %s
++-rmv=rm %s
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/c16x vbcc-0.7.orig/share/vbcc/conf/c16x
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/c16x	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/conf/c16x	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,8 @@
++-pp=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/c16x/include -D__C16X__ -+ %s %s %s
++-ppv=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/c16x/include -D__C16X__ -+ %s %s %s
++-cc=/usr/lib/vbcc/vbccc16x -quiet %s -o=%s %s -O=%ld
++-ccv=/usr/lib/vbcc/vbccc16x -I/usr/share/vbcc/arch/c16x/include %s -o=%s %s -O=%ld
++-as=echo "Don't know how to assemble C16X code" 1>&2; exit 0
++-ld=echo "Don't know how to link C16X code" 1>&2; exit 0
++-rm=rm %s
++-rmv=rm %s
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/i386 vbcc-0.7.orig/share/vbcc/conf/i386
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/i386	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/conf/i386	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,8 @@
++-pp=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/i386/include -D__I386__ -+ %s %s %s
++-ppv=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/i386/include -D__I386__ -+ %s %s %s
++-cc=/usr/lib/vbcc/vbcci386 -quiet %s -o=%s %s -O=%ld
++-ccv=/usr/lib/vbcc/vbcci386 -I/usr/share/vbcc/arch/i386/include %s -o=%s %s -O=%ld
++-as=echo "Don't know how to assemble i386 code" 1>&2; exit 0
++-ld=echo "Don't know how to link i386 code" 1>&2; exit 0
++-rm=rm %s
++-rmv=rm %s
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/m68k vbcc-0.7.orig/share/vbcc/conf/m68k
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/m68k	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/conf/m68k	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,8 @@
++-pp=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/m68k/include -D__M68K__ -+ %s %s %s
++-ppv=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/m68k/include -D__M68K__ -+ %s %s %s
++-cc=/usr/lib/vbcc/vbccm68k -quiet %s -o=%s %s -O=%ld
++-ccv=/usr/lib/vbcc/vbccm68k -I/usr/share/vbcc/arch/m68k/include %s -o=%s %s -O=%ld
++-as=echo "Don't know how to assemble m68k code" 1>&2; exit 0
++-ld=echo "Don't know how to link m68k code" 1>&2; exit 0
++-rm=rm %s
++-rmv=rm %s
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/ppc vbcc-0.7.orig/share/vbcc/conf/ppc
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/ppc	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/conf/ppc	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,8 @@
++-pp=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/ppc/include -D__PPC__ -+ %s %s %s
++-ppv=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/ppc/include -D__PPC__ -+ %s %s %s
++-cc=/usr/lib/vbcc/vbccppc -quiet %s -o=%s %s -O=%ld
++-ccv=/usr/lib/vbcc/vbccppc -I/usr/share/vbcc/arch/ppc/include %s -o=%s %s -O=%ld
++-as=echo "Don't know how to assemble PowerPC code" 1>&2; exit 0
++-ld=echo "Don't know how to link PowerPC code" 1>&2; exit 0
++-rm=rm %s
++-rmv=rm %s
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/z vbcc-0.7.orig/share/vbcc/conf/z
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/share/vbcc/conf/z	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/share/vbcc/conf/z	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,7 @@
++-pp=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/z/include -+ -D__Z__ %s %s %s
++-ppv=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/z/include -+ -D__Z__ %s %s %s
++-cc=/usr/lib/vbcc/vbccz -quiet %s -o=%s %s -O=%ld
++-ccv=/usr/lib/vbcc/vbccz %s -o=%s %s -O=%ld
++-as=cp %s %s
++-ld=echo "Don't know how to link Z-machine code" 1>&2; exit 0
++-rm=rm %s
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/vbc.h vbcc-0.7.orig/vbc.h
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/vbc.h	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/vbc.h	Sat Sep 19 22:54:10 2015
+@@ -34,8 +34,9 @@
+ #endif
+ 
+ struct argument_list{
+-    np  arg;
+-    struct argument_list *next;
++  np  arg;
++  struct argument_list *next;
++  struct IC *pushic;
+ };
+ 
+ 
+@@ -91,12 +92,13 @@
+ extern void gen_IC(np,int,int),convert(np,int),gen_label(int);
+ extern void savescratch(int,struct IC *,int);
+ struct regargs_list{
+-    struct regargs_list *next;
+-    int reg;
+-    struct Var *v;
++  struct regargs_list *next;
++  struct argument_list *al;
++  int reg;
++  struct Var *v;
+ };
+ #ifdef HAVE_REGPARMS
+-extern zlong push_args(struct argument_list *,struct struct_declaration *,int,struct regargs_list **,struct reg_handle *,struct obj *,int);
++extern zlong push_args(struct argument_list *,struct struct_declaration *,int,struct regargs_list **,struct reg_handle *,struct obj *,struct Typ *,int);
+ #else
+ extern zlong push_args(struct argument_list *,struct struct_declaration *,int,struct regargs_list **);
+ #endif
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/vc.1 vbcc-0.7.orig/vc.1
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/vc.1	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/vc.1	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,135 @@
++.TH vc 1 "11 Nov 2001"
++.SH NAME
++vc \- front end to the vbcc compiler suite
++
++.SH SYNOPSIS
++.B vc
++.BI + "target"
++[
++.I options
++]
++[
++.I input-files
++]
++
++.SH DESCRIPTION
++.B vc
++is the front-end to the vbcc compiler suite. It should be reasonably compatible
++with the standard Unix
++.B cc
++program, with a few minor changes.
++.P
++vbcc is a cross-platform compiler. As a result it is necessary to tell the
++compiler which target to generate code for. This is done with the required
++.BI + "target"
++option. The following targets are supported:
++.TP
++.BR i386
++Intel 386 series.
++.TP
++.BR ppc
++Any Motorola PowerPC series processor.
++.TP
++.BR m68k
++Any Motorola 68000 series processor.
++.TP
++.BR alpha
++DEC's Alpha series.
++.TP
++.BR c16x
++The SAB C16X microprocessor.
++.TP
++.BR z
++Infocom's Z-machine.
++.P
++vbcc does not provide a complete toolchain, only the compiler. As a result, you
++will need the appropriate assembler and linker to use the code produced by
++vbcc. Unfortunately, vbcc cannot know which toolchain you are using, and as a
++result
++.B vc
++does not know how to assemble and link files.
++.P
++For more information on the code generators, descriptions of the
++platform-specific flags available, how to create configuration files, and
++detailed information on the more arcane options that
++.B vc
++supports, see
++.BR /usr/share/doc/vbcc/doc .
++
++.SH OPTIONS
++(Commonly used options only)
++
++.TP 
++.BR -v
++verbose; print all commands
++.TP
++.BR -vv
++very verbose; display some internals as well
++.TP
++.BR -Ox
++optimisation level
++.TP
++.BI -o file
++save target as
++.I file
++(default for executables is a.out)
++.TP
++.BR -E
++do not compile, save the preprocessed C sources
++.TP
++.BR -S
++do not assemble, save the compiled files
++.TP
++.BR -SCS
++do not schedule, save the compiled files
++.TP
++.BR -c
++do not link, save the assembled files
++.TP
++.BR -k
++keep all intermediate files; by default all temporary files are removed
++.TP
++.BI -D string
++define a preprocessor symbol, e.g.
++.I -DAMIGA
++or
++.I -DCPU=68000
++.TP
++.BI -I path
++add the path to the include file search path
++.TP
++.BI -l lib
++link with the library
++.I lib
++.TP
++.B -nostdlib
++do not link with the standard libraries; useful only for experts
++.TP
++.B -notmpfile
++do not use names from tmpnam() for temporary files
++.TP
++.B -schedule
++do instruction scheduling (not supported in the Debian version)
++.P
++All other options are passed through to the compiler.
++
++.SH SEE ALSO
++The main vbcc documentation is in
++.IR /usr/share/doc/vbcc/doc .
++
++.SH AUTHORS
++Main compiler (C) 1995-1999 Volker Barthelmann; see
++.I vbcc.doc
++for license
++.P
++Preprocessor taken from the lcc distribution, with minor alterations.
++(C) 1991-1995 AT&T, Chris Fraser and David Hanson. See
++.I vcpp.doc
++for license and full details
++.P
++Z-machine code generator (C) 2001 David Given under the MIT license; see
++.I vbccz.doc
++for full license
++.P
++Additional code in the Debian version by David Given is in the public domain
++
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/vc.config vbcc-0.7.orig/vc.config
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/vc.config	Thu Jan  1 00:00:00 1970
++++ vbcc-0.7.orig/vc.config	Sat Sep 19 22:54:10 2015
+@@ -0,0 +1,7 @@
++-pp=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/z/include -+ -D__Z__ %s %s %s
++-ppv=/usr/lib/vbcc/vcpp -I/usr/share/vbcc/arch/z/include -+ -D__Z__ %s %s %s
++-cc=/usr/lib/vbcc/vbccz -quiet %s -o=%s %s -O=%ld
++-ccv=/usr/lib/vbcc/vbccz %s -o=%s %s -O=%ld
++-as=cp %s %s
++-ld=echo "Don't know how to link Z-machine code" 1>&2; exit 0
++-rm=rm %s
+diff -Naur /usr/glenda/origvbcc/vbcc-0.7.orig/vprof/vprof.c vbcc-0.7.orig/vprof/vprof.c
+--- /usr/glenda/origvbcc/vbcc-0.7.orig/vprof/vprof.c	Sat Sep 19 07:03:22 2015
++++ vbcc-0.7.orig/vprof/vprof.c	Sat Sep 19 22:54:10 2015
+@@ -158,4 +158,5 @@
+   }
+ 
+   exit(0);
++return;
+ }

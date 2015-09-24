@@ -1,0 +1,7 @@
+#!/bin/rc
+
+for(i in `{ls libc/*.c}){
+	stem=`{echo $i |sed 's/\.c$//' |sed 's/libc\///g'}
+	echo /usr/glenda/newvbcc/vbcc/bin/vc -I/usr/glenda/vbcc/vbcc-0.7.orig/share/vbcc/arch/z/include -Ilibc/include -Ic '-module-name='$stem -c $i
+	/usr/glenda/newvbcc/vbcc/bin/vc -I/usr/glenda/vbcc/vbcc-0.7.orig/share/vbcc/arch/z/include -Ilibc/include -Ic '-module-name='$stem -c $i
+}

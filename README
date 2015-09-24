@@ -1,0 +1,20 @@
+Interactive fiction tools for Plan 9
+
+A collection of ports to Plan 9 of tools for building and playing
+interactive fiction files.  The 'guide' file shows how to apply the
+patches and build the tools, along with a simple demonstration game.
+
+vbcc: c to z machine asm compiler 
+castle1.1: includes libc for vbccz
+inform: language and compiler for z machine files 
+frotz: runs traditional zmachine files 
+ztools: analyzes and disassembles z machine files
+zrip: extracts zmachine files from zblorb archives
+cheapglk: support library for glulxe
+glulxe: 32-bit modern IF interpreter
+
+Please check each subdirectory for information on authorship and
+licensing, each directory has different authors and license terms.
+
+Original changes and contributions: GPLv2.
+Enjoy the fictional multiverse.
