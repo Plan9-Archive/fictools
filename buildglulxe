@@ -1,7 +1,7 @@
 #!/bin/rc
 
 cd cheapglk
-pcc -D_POSIX_SOURCE -c *.c
+pcc -D_POSIX_SOURCE -c cgblorb.c cgdate.c cgfref.c cggestal.c cgmisc.c cgschan.c cgstream.c cgstyle.c cgunicod.c cgwindow.c gi_blorb.c gi_dispa.c glkstart.c main.c
 ar r libcheapglk.a cgfref.8 cggestal.8 cgmisc.8 cgstream.8 cgstyle.8 cgwindow.8 cgschan.8 cgdate.8 cgunicod.8 main.8 gi_dispa.8 gi_blorb.8 cgblorb.8
 cp libcheapglk.a /386/lib/ape
 cd ../glulxe
