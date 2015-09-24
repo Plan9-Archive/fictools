@@ -1,4 +1,3 @@
-cd vbcc
 pcc -o /386/bin/zrip zrip.c
 buildglulxe
 cp glulxe/glulxe /386/bin/glulxe
@@ -16,12 +15,11 @@ cd ../vbcc
 ape/patch -p1 <../newvbcc.patch
 mkdir bin
 ape/make all
-cp bin/vc /386/bin/vbcw
 cd ..
 cp vc.config castles-1.1
 bind -ac informlibs castles-1.1
 cd castles-1.1
 ../buildlibc
 ../vbcc/bin/vc -Ilibc/include -Ic '-module-name=permute' -c ../code/permute.c
-inform /usr/glenda/fictools/code/permutec.inf /usr/glenda/fictools/zmachines/permute.inf
-frotz ../zmachines/permute.inf
+inform -ew /usr/glenda/fictools/code/permutec.inf /usr/glenda/fictools/zmachines/permute.r5
+frotz ../zmachines/permute.r5
