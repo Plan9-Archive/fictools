@@ -20,7 +20,7 @@ mkdir bin
 ape/make all
 cp bin/vc /386/bin/vbcw
 cd ..
-cp vbcc-0.7.orig/i386 castles-1.1
+cp vc.config castles-1.1
 bind -ac informlibs castles-1.1
 cd castles-1.1
 ../buildlibc
