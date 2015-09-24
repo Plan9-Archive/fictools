@@ -1794,7 +1794,6 @@ struct Var *vla_find_sp(int lab)
     vla_nesting(p,vn,&nest);
   }
   ierror(0);
-  return;
 }
 
 void vla_jump_fix(void)

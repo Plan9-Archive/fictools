@@ -2047,7 +2047,6 @@ zmax push_args(struct argument_list *al,struct struct_declaration *sd,int n,stru
             return of;
         }
     }
-	return;
 }
 
 void convert(np p,int f)

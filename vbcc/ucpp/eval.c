@@ -1043,7 +1043,6 @@ rogue_op_err:
 invalid_token_err:
 	error(eval_line, "invalid token in constant integral expression");
 	throw(eval_exception);
-	return;
 }
 
 #define UNARY(x)	((x) != NUMBER && (x) != NAME && (x) != CHAR \

@@ -1,5 +1,5 @@
 /* Kapitel 1 */
-1,1,"All code shall conform to ISO 9899:1990 \"Programming languages - C\", amended and "
+1,1,"All code shall conform to ISO 9899:1990 \"Programming languages - Câ\", amended and "
 "corrected by ISO/IEC 9899/COR1:1995, ISO/IEC 9899/AMD1:1995, and ISO/IEC 9899/COR2:1996.",MISRA|MISRA_2004,
 
 1,2,"No reliance shall be placed on undefined or unspecified behaviour.",MISRA|MISRA_2004,

@@ -744,5 +744,4 @@ int main(int argc,char *argv[])
     }
     if(!(flags&KEEPSCRATCH)) del_scratch(first_scratch);
     raus(0);
-	return;
 }

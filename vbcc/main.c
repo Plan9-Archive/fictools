@@ -905,7 +905,6 @@ int main(int argc,char *argv[])
     }
   }
   raus();
-  return;
 }
 int mcmp(const char *s1,const char *s2)
 /*  Einfachere strcmp-Variante.     */

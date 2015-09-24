@@ -208,7 +208,6 @@ union atyps{
   zfloat vfloat;
   zdouble vdouble;
   zldouble vldouble;
-  zpointer vpointer;
 };
 #endif
 /* This struct represents objects in the intermediate code. */

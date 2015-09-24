@@ -1,8 +1,7 @@
-TARGET=z
+
 # used to create vbcc, vc and ucpp
-CC = pcc
-#CC = gcc -std=c9x -g -DHAVE_AOS4 #-DHAVE_ECPP -DHAVE_MISRA
-#LDFLAGS = -lm
+CC = gcc -std=c9x -g -DHAVE_AOS4 #-DHAVE_ECPP -DHAVE_MISRA
+LDFLAGS = -lm
 
 # native version; used to create dtgen
 NCC = $(CC)

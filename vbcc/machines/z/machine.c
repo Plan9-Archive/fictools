@@ -243,10 +243,8 @@ enum {
 
 /* Some useful zops. */
 
-//struct zop zop_zero = {ZOP_CONSTANT, {constant: 0}};
-struct zop zop_zero = {ZOP_CONSTANT, 0};
-//struct zop zop_xp = {ZOP_REG, {reg: XP}};
-struct zop zop_xp = {ZOP_REG, 1};
+struct zop zop_zero = {ZOP_CONSTANT, {constant: 0}};
+struct zop zop_xp = {ZOP_REG, {reg: XP}};
 struct zop zop_stack = {ZOP_STACK, 0};
 
 /* Temporaries used to store comparison register numbers. */
@@ -961,7 +959,7 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 			zmax offset = voff(obj);
 
 			if ((typf & NQ) == CHAR)
-				fprintf(fp, "\t@storeb xp 0%+lld %s;\n",
+				fprintf(fp, "\t@storeb xp 0%+ld %s;\n",
 					offset, regnames[reg]);
 			else
 			{
@@ -975,7 +973,7 @@ static void write_reg(FILE* fp, struct obj* obj, int typf, int reg)
 					fprintf(fp, "\t@storew sp 0 %s;\n", regnames[reg]);
 				}
 				else
-					fprintf(fp, "\t@storew xp 0%+lld %s;\n",
+					fprintf(fp, "\t@storew xp 0%+ld %s;\n",
 						offset >> 1, regnames[reg]);
 			}
 			return;
@@ -1049,7 +1047,6 @@ dereference:
 
 	obj->flags &= ~DREFOBJ;
 	read_reg(fp, obj, POINTER, 0);
-	fprintf(fp, "! dereference: *pain* \n");
 	fprintf(fp, "\t@store%c sp 0 %s;\n",
 		((typf & NQ) == CHAR) ? 'b' : 'w',
 		regnames[reg]);
@@ -1071,7 +1068,6 @@ static void move_reg(FILE* fp, int reg1, int reg2)
 
 static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 {
-	fprintf(fp, "! read_reg regnames %s\n", regnames[reg]);
 	int flags = obj->flags &
 		(KONST|REG|VAR|DREFOBJ|VARADR);
 
@@ -1100,7 +1096,7 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 			case UNSIGNED|CHAR:	c.val.constant = obj->val.vuchar;	break;
 			case SHORT:		c.val.constant = obj->val.vshort;	break;
 			case UNSIGNED|SHORT:	c.val.constant = obj->val.vushort;	break;
-		case POINTER:		c.val.constant = (int)(obj->val.vpointer);	break;
+		case POINTER:	      ierror(0);
 			case INT:		c.val.constant = obj->val.vint;		break;
 			case UNSIGNED|INT:	c.val.constant = obj->val.vuint;	break;
 			default:
@@ -1131,15 +1127,8 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 			case REGISTER: /* Local variable */
 				if (flags & VARADR)
 				{
-					fprintf(fp, "! wtf regnames[reg] is %s\n", regnames[reg]);
-/*
 					fprintf(fp, "\t@add xp 0%+ld -> %s;\n",
 						voff(obj), regnames[reg]);
-*/
-					fprintf(fp, "\t@add xp 0%+lld -> ", voff(obj));
-					fprintf(fp, "%s;\n", regnames[reg]);
-					fprintf(fp, "! wtf regnames[reg] is %s\n", regnames[reg]);
-					fprintf(fp, "! case REGISTER flags & VARADR\n");
 				}
 				else if (flags & REG)
 				{
@@ -1151,31 +1140,19 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 				{
 					zmax offset = voff(obj);
 
-					if ((typf & NQ) == CHAR){
-/*
+					if ((typf & NQ) == CHAR)
 						fprintf(fp, "\t@loadb xp 0%+ld -> %s;\n",
 							offset, regnames[reg]);
-*/
-						fprintf(fp, "\t@loadb xp 0%+lld -> ", offset);
-						fprintf(fp, "%s;\n", regnames[reg]);
-					}
 					else
 					{
 						if (offset & 1)
 						{
-							fprintf(fp, "\t@add xp 0%+lld -> sp;\n", offset);
-							fprintf(fp, "! case REGISTER offset & 1\n");
+							fprintf(fp, "\t@add xp 0%+ld -> sp;\n", offset);
 							fprintf(fp, "\t@loadw sp 0 -> %s;\n", regnames[reg]);
 						}
 						else
-						{
-/*
 							fprintf(fp, "\t@loadw xp 0%+ld -> %s;\n",
 								offset >> 1, regnames[reg]);
-*/
-							fprintf(fp, "\t@loadw xp 0%+lld -> ",offset >> 1); 
-							fprintf(fp, "%s;\n", regnames[reg]);
-						}
 					}
 				}
 				break;
@@ -1195,7 +1172,6 @@ static void read_reg(FILE* fp, struct obj* obj, int typf, int reg)
 					emit_identifier(fp, obj);
 					fprintf(fp, " 0%+ld -> %s;\n",
 						obj->val.vlong, regnames[reg]);
-					fprintf(fp, "! case EXTERN\n");
 				}
 				else if (strcmp(obj->v->identifier, "__va_start") == 0)
 				{
@@ -1247,7 +1223,6 @@ dereference:
 	/* Fetch the value to dereference. */
 	obj->flags &= ~DREFOBJ;
 	read_reg(fp, obj, POINTER, 0);
-	fprintf(fp, "! dereference: fetch \n");
 		
 	if (flags & DREFOBJ)
 	{
@@ -1291,7 +1266,7 @@ static void push_value(FILE* fp, struct obj* obj, int typf, struct zop* op)
 			case UNSIGNED|SHORT:	op->val.constant = obj->val.vushort;	break;
 			case INT:		op->val.constant = obj->val.vint;	break;
 			case UNSIGNED|INT:	op->val.constant = obj->val.vuint;	break;
-		case POINTER:		op->val.constant = (int)(obj->val.vpointer);	break;
+		case POINTER:		ierror(0);
 			default:
 				fprintf(fp, "XXX !!! bad konst type %X\n", typf);
 		}
@@ -1369,7 +1344,6 @@ static void push_value(FILE* fp, struct obj* obj, int typf, struct zop* op)
 	}
 	
 	read_reg(fp, obj, typf, 0);
-	fprintf(fp, "! push_value function\n");
 	op->type = ZOP_STACK;
 }
 
@@ -1560,7 +1534,6 @@ static void emit_add(FILE* fp, struct zop* q1, struct zop* q2, struct zop* z)
 	fprintf(fp, " -> ");
 	emit_zop(fp, z);
 	fprintf(fp, ";\n");
-	fprintf(fp, "! fall back on\n");
 }
 
 /* Copy a value from one zop to another. This is not quite as simple as you
@@ -1832,7 +1805,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 					case INT:
 					case POINTER:
 						read_reg(fp, &ic->q1, typf, 2);
-						fprintf(fp, "! case SETRETURN case POINTER\n");
 						break;
 
 					case LONG:
@@ -1910,7 +1882,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 
 			case MOVETOREG: /* Read a register from memory */
 				read_reg(fp, &ic->q1, typf, ic->z.reg);
-				fprintf(fp, "! case MOVETOREG\n");
 				continue;
 
 			case ASSIGN: /* Move something to somewhere else */
@@ -1956,7 +1927,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 				fprintf(fp, "\t@add xp 0%+ld -> ", i);
 				emit_zop(fp, &z);
 				fprintf(fp, ";\n");
-				fprintf(fp, "! case ADDRESS\n");
 				fin_zop(fp, &ic->z, typf, &z);
 				continue;
 
@@ -2082,7 +2052,6 @@ void gen_code(FILE* fp, struct IC *ic, struct Var* func, zmax stackframe)
 						fprintf(fp, " -> ");
 						emit_zop(fp, &z);
 						fprintf(fp, ";\n");
-						fprintf(fp, "! case POINTER\n");
 						fin_zop(fp, &ic->z, typf, &z);
 						//emit_object(fp, &ic->q2, typf);
 						break;
