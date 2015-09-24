@@ -14,8 +14,8 @@ cp 8.out /386/bin/frotz
 cd ../inform
 mk
 cp 8.out /386/bin/inform
-cd ../vbcc-0.7.orig
-ape/patch -p1 <../vbcc9.patch
+cd ../vbcc
+ape/patch -p1 <../newvbcc.patch
 mkdir bin
 ape/make all
 cp bin/vc /386/bin/vbcw
