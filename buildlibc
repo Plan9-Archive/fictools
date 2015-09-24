@@ -2,6 +2,6 @@
 
 for(i in `{ls libc/*.c}){
 	stem=`{echo $i |sed 's/\.c$//' |sed 's/libc\///g'}
-	echo /usr/glenda/vbcc/vbcc-0.7.orig/bin/vc -Ilibc/include -Ic '-module-name='$stem -c $i
-	/usr/glenda/vbcc/vbcc-0.7.orig/bin/vc -Ilibc/include -Ic '-module-name='$stem -c $i
+	echo /usr/glenda/fictools/vbcc/bin/vc -Ilibc/include -Ic '-module-name='$stem -c $i
+	/usr/glenda/fictools/vbcc/bin/vc -Ilibc/include -Ic '-module-name='$stem -c $i
 }
