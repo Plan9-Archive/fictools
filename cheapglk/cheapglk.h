@@ -29,7 +29,8 @@
     or illegal operation from the game program. */
 
 #define gli_strict_warning(msg)   \
-    (printf("Glk library error: %s\n", msg)) 
+    (fprintf(stderr, "Glk library error: %s\n", msg));  \
+	(printf("\n"));
 
 /* The overall screen size, as set by command-line options. A
     better implementation would check the real screen size
