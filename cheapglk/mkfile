@@ -1,0 +1,10 @@
+</sys/src/ape/config
+all:
+	pcc -D_POSIX_SOURCE -D_BSD_EXTENSION -D_PLAN9_SOURCE -c cgdate.c
+	pcc -D_POSIX_SOURCE -D_BSD_EXTENSION -D_PLAN9_SOURCE -c cgunicod.c
+	pcc -D_POSIX_SOURCE -D_BSD_EXTENSION -D_PLAN9_SOURCE -c g*.c
+	pcc -D_POSIX_SOURCE -D_BSD_EXTENSION -D_PLAN9_SOURCE -c main.c
+	ar r libcheapglk.a cgfref.$O cggestal.$O cgmisc.$O cgstream.$O cgstyle.$O cgwindow.$O cgschan.$O cgdate.$O cgunicod.$O main.$O gi_dispa.$O gi_blorb.$O cgblorb.$O
+clean:
+	rm *.a
+	rm *.$O

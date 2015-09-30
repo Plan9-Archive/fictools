@@ -1,13 +1,49 @@
 !% -SD
 
 !============================================================================
-Constant Story "Captain Fate";
+Constant Story "Harmonic Time-Bind Ritual Symphony";
 Constant Headline
-            "^A simple Inform example
-             ^by Roger Firth and Sonja Kesserich.^";
+"^9:15 PM 15 Sept.  2015
+^
+^You type the introductory text of the game into the acme text editor.
+It is running on a Plan 9 cpu/file server that you connect to with
+Drawterm.  You have spent the past thirty minutes on the porch with
+Staci, watching as the moon became completely eclipsed.  Your room is
+filled with cheap computers running customized grid software called
+Advanced Namespace Tools.
+^
+^There is a mostly empty cup of coffee here.
+^
+^There is a Moon Man beer here, half full.
+^
+^Outside, the moon is completely eclipsed, a shadowy phantom of its
+usual brilliance.
+^
+^>go outside
+^
+^You walk onto the porch.  You contemplate the mysterious beauty of the
+moon.  Around your neck, the Lunar Revolution Power Pendant resonates
+with the hum of the night; a slight breeze, crickets.  The bridge to
+the west has been closed for weeks and everything has been quiet and
+still.
+^
+^You contemplate the past few years of lunacy.  It has been an
+unbelievable Adventure since New Year's 2013, when you resolved to
+return to Plan 9 software development.  You weren't trying start a
+Revolution; you just wanted something useful to do with your time.
+The VALISpectrum colors, the Singing Hippie Housekeepers, Central
+Headquarters (the Castle), riding Lunar Lightning to Cosmic Delights
+and visiting the Afterlife, falling in love - everything ensued from
+making the binds of fiction and reality that granted you the freedom
+to become
+^
+^THE MOON COMPUTER (Chapter 1)
+^
+^";
+
 !Release 1; Serial "020428";    ! IBG first edition (public beta)
 !Release 2; Serial "020827";    ! IBG second edition
-Release 3;  Serial "040804";    ! for keeping track of public releases
+Release 0;  Serial "150928";    ! for keeping track of public releases
 
 Constant MANUAL_PRONOUNS;
 Constant MAX_SCORE     2;
@@ -701,11 +737,20 @@ Object  costume "your costume"
     move costume to player;
     move clothes to player; give clothes worn;
     lookmode = 2;
-    "^^Impersonating mild mannered John Covarth, assistant help boy at an
-     insignificant drugstore, you suddenly STOP when your acute hearing
-     deciphers a stray radio call from the POLICE. There's some MADMAN
-     attacking the population in Granary Park! You must change into your
-     Captain FATE costume fast...!^^";
+    "^^The full moon amidst clouds spills milky brightness everywhere.
+September 27 2015, summer is just barely over but the air is still
+warm and moist.  Staci is standing on tip-toe, looking over the edge
+of the rooftops and treebranches.  Oh!  I can tell it's started, she
+says.  You stand up and walk across the porch, slipping your arm
+around her as you turn to watch the sky.  What had been a low full
+circle wreathed by clouds is higher now and shinining clearly, but no
+longer full - darkness was creeping across the surface as the Moon
+swung into the path of the shadow cast by Earth amidst the Sun's
+light.
+
+You peer upwards together, savoring the moment.  The night air is
+sweet and warm, you are together with someone you love...and the
+Castle is about to reopen.^^";
 ];
 
 [ DeathMessage;

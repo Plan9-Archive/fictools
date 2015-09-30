@@ -1,0 +1,7 @@
+syntax: glob
+8.*
+*.8
+*.gz
+*.tgz
+*.a
+8.out
