@@ -25,5 +25,6 @@ cd $builddir
 cp vc.config castles-1.1
 bind -ac informlibs castles-1.1
 buildlibc
-../vbcc/bin/vc -Ilibc/include -Ic '-module-name=permute' -c ../code/permute.c
+cd $builddir
+vbcc/bin/vc -Ilibc/include -Ic '-module-name=permute' -c ../code/permute.c
 inform -ew $builddir/code/permutec.inf $builddir/zmachines/permute.r5
