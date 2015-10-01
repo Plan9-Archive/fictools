@@ -3,7 +3,7 @@
 !============================================================================
 Constant Story "Harmonic Time-Bind Ritual Symphony";
 Constant Headline
-"^9:15 PM 15 Sept.  2015
+"^9:15 PM 27 Sept.  2015
 ^
 ^You type the introductory text of the game into the acme text editor.
 It is running on a Plan 9 cpu/file server that you connect to with
@@ -738,19 +738,17 @@ Object  costume "your costume"
     move clothes to player; give clothes worn;
     lookmode = 2;
     "^^The full moon amidst clouds spills milky brightness everywhere.
-September 27 2015, summer is just barely over but the air is still
-warm and moist.  Staci is standing on tip-toe, looking over the edge
-of the rooftops and treebranches.  Oh!  I can tell it's started, she
-says.  You stand up and walk across the porch, slipping your arm
-around her as you turn to watch the sky.  What had been a low full
-circle wreathed by clouds is higher now and shinining clearly, but no
-longer full - darkness was creeping across the surface as the Moon
-swung into the path of the shadow cast by Earth amidst the Sun's
-light.
+Summer is just barely over but the air is still warm and moist. Staci
+is standing on tip-toe, looking over the edge of the rooftops and
+treebranches. Oh! I can tell it's started, she says. You stand up
+and walk across the porch, slipping your arm around her as you turn to
+watch the sky. What had been a low full circle wreathed by clouds is
+higher now and shinining clearly, but no longer full - darkness was
+creeping across the surface as the Moon swung into the path of the
+shadow cast by Earth amidst the Sun's light. You peer upwards together,
+savoring the moment. The night air is sweet and warm, you are with
+someone you love...and the Castle is about to reopen.^^";
 
-You peer upwards together, savoring the moment.  The night air is
-sweet and warm, you are together with someone you love...and the
-Castle is about to reopen.^^";
 ];
 
 [ DeathMessage;
