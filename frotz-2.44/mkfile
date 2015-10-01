@@ -2,7 +2,7 @@
 all:
    pcc -c src/common/*.c
    pcc -c src/dumb/*.c
-   pcc -v *.$O
+   pcc -o frotz *.$O
 install:
 	mk
 	cp frotz /$objtype/bin
