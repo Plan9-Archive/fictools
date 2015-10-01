@@ -1,0 +1,30 @@
+#!/bin/rc
+
+builddir=`{pwd}
+pcc -o /386/bin/zrip zrip.c
+cd cheapglk
+mk install
+cd $builddir
+cd glulxe
+mk install
+cd $builddir
+cd ztools
+mk install
+cd $builddir
+cd frotz-2.44
+mk install
+cd $builddir
+cd inform
+mk install
+cd $builddir
+cd vbcc
+ape/patch -p1 <../newvbcc.patch
+mkdir bin
+ape/make all
+cd $builddir
+cp vc.config castles-1.1
+bind -ac informlibs castles-1.1
+cd castles-1.1
+../buildlibc
+../vbcc/bin/vc -Ilibc/include -Ic '-module-name=permute' -c ../code/permute.c
+inform -ew /usr/glenda/fictools/code/permutec.inf /usr/glenda/fictools/zmachines/permute.r5

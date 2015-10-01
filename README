@@ -16,5 +16,9 @@ glulxe: 32-bit modern IF interpreter
 Please check each subdirectory for information on authorship and
 licensing, each directory has different authors and license terms.
 
+If your version of 9front is not completely up to date, you may
+need to rebuild /sys/src/cmd/cpp to build cheapglk. The file cpp.h 
+should be substituted for the original /sys/src/cmd/cpp/cpp.h.
+
 Original changes and contributions: GPLv2.
 Enjoy the fictional multiverse.
