@@ -1,7 +1,7 @@
 </sys/src/ape/config
 all:
 	$O^a getfcr.s
-	pcc -I../glkterm -D_POSIX_SOURCE -D_BSD_EXTENSION -D_PLAN9_SOURCE -c *.c
+	pcc -I../cheapglk -D_POSIX_SOURCE -D_BSD_EXTENSION -D_PLAN9_SOURCE -c *.c
 	pcc -I../cheapglk -D_POSIX_SOURCE -D_BSD_EXTENSION -D_PLAN9_SOURCE -o cglulxe main.$O files.$O vm.$O exec.$O funcs.$O operand.$O string.$O glkop.$O heap.$O serial.$O search.$O accel.$O float.$O gestalt.$O osdepend.$O profile.$O unixstrt.$O getfcr.$O -lcheapglk
 install:
 	mk
