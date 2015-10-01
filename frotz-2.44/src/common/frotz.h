@@ -52,7 +52,7 @@ typedef unsigned short zchar;
 #endif
 */
 
-typedef unsigned char zchar;
+typedef char zchar;
 
 enum story {
     BEYOND_ZORK,

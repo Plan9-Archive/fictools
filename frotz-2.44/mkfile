@@ -1,0 +1,11 @@
+</sys/src/ape/config
+all:
+   pcc -c src/common/*.c
+   pcc -c src/dumb/*.c
+   pcc -v *.$O
+install:
+	mk
+	cp frotz /$objtype/bin
+clean:
+   rm *.out
+   rm *.$O
