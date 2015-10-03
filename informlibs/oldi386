@@ -1,7 +1,0 @@
--pp=/usr/glenda/zbcc/vbcc-0.7.orig/bin/vcpp -I/usr/glenda/zbcc/vbcc-0.7.orig/share/vbcc/arch/z/include -+ -D__Z__ %s %s %s
--ppv=/usr/glenda/zbcc/vbcc-0.7.orig/bin/vcpp -I/usr/glenda/zbcc/vbcc-0.7.orig/share/vbcc/arch/z/include -+ -D__Z__ %s %s %s
--cc=/usr/glenda/zbcc/vbcc-0.7.orig/bin/vbccz -quiet %s -o=%s %s -O=%ld
--ccv=/usr/glenda/zbcc/vbcc-0.7.orig/bin/vbccz %s -o=%s %s -O=%ld
--as=cp %s %s
--ld=echo "Don't know how to link Z-machine code" 1>&2; exit 0
--rm=echo %s

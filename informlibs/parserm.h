@@ -1,9 +1,14 @@
 ! ==============================================================================
 !   PARSERM:  Core of parser.
 !
-!   Supplied for use with Inform 6 -- Release 6/11 -- Serial number 040227
+!   Supplied for use with Inform 6 -- Release 6/12 -- Serial number 140801
 !
-!   Copyright Graham Nelson 1993-2004 but freely usable (see manuals)
+!   Copyright Graham Nelson 1993-2004 and David Griffith 2012-2014
+!
+!   This code is licensed under either the traditional Inform license as
+!   described by the DM4 or the Artistic License version 2.0.  See the
+!   file COPYING in the distribution archive or at
+!   https://github.com/DavidGriffith/inform6lib/
 !
 !   This file is automatically Included in your game file by "Parser".
 ! ------------------------------------------------------------------------------
@@ -52,6 +57,14 @@ Constant Grammar__Version 2;
 Include "linklpa";
 #Endif; ! MODULE_MODE
 
+#Ifdef COLOR;
+Constant COLOUR;
+#Endif;
+
+#Ifdef COLOUR;
+Global clr_on;
+#Endif;
+
 ! ------------------------------------------------------------------------------
 !   Global variables and their associated Constant and Array declarations
 ! ------------------------------------------------------------------------------
@@ -60,6 +73,7 @@ Global location = InformLibrary;    ! Must be first global defined
 Global sline1;                      ! Must be second
 Global sline2;                      ! Must be third
                                     ! (for status line display)
+
 ! ------------------------------------------------------------------------------
 !   Z-Machine and interpreter issues
 ! ------------------------------------------------------------------------------
@@ -120,9 +134,11 @@ Global gg_statuswin_size = 1;
 #Ifndef sys_statusline_flag;
 Global sys_statusline_flag = 0;     ! non-zero if status line displays time
 #Endif;
+
 #Ifndef START_MOVE;
-Constant START_MOVE 0;              ! Traditionally 0 for Infocom, 1 for Inform
+Constant START_MOVE 0;               ! Traditionally 0 for Infocom, 1 for Inform
 #Endif;
+
 Global turns = START_MOVE;          ! Number of turns of play so far
 Global the_time = NULL;             ! Current time (in minutes since midnight)
 Global time_rate = 1;               ! How often time is updated
@@ -145,8 +161,9 @@ Global things_score;                ! Contribution made by acquisition
 ! ------------------------------------------------------------------------------
 
 Global player;                      ! Which object the human is playing through
-Global deadflag;                    ! Normally 0, or false; 1 for dead; 2 for victorious, and
-                                    ! higher numbers represent exotic forms of death
+Global deadflag;                    ! Normally 0, or false; 1 for dead
+                                    ! 2 for victorious, and higher numbers
+                                    ! represent exotic forms of death
 
 ! ------------------------------------------------------------------------------
 !   Light and room descriptions
@@ -155,15 +172,19 @@ Global deadflag;                    ! Normally 0, or false; 1 for dead; 2 for vi
 Global lightflag = true;            ! Is there currently light to see by?
 Global real_location;               ! When in darkness, location = thedark
                                     ! and this holds the real location
-Global visibility_ceiling;          ! Highest object in tree visible from the player's point of view
-                                    ! (usually the room, sometimes darkness, sometimes a closed
+Global prev_location;               ! The previous value of real_location
+Global visibility_ceiling;          ! Highest object in tree visible from the
+                                    ! player's point of view (usually the room,
+                                    ! sometimes darkness, sometimes a closed
                                     ! non-transparent container).
 
-Global lookmode = 1;                ! 1=standard, 2=verbose, 3=brief room descs
-Global print_player_flag;           ! If set, print something like "(as Fred)" in room descriptions,
-                                    ! to reveal whom the human is playing through
-Global lastdesc;                    ! Value of location at time of most recent room description
-                                    ! printed out
+Global lookmode = 2;                ! 1=brief, 2=verbose, 3=superbrief
+                                    ! room descriptions
+Global print_player_flag;           ! If set, print something like "(as Fred)"
+                                    ! in room descriptions, to reveal whom the
+                                    ! player is playing through
+Global lastdesc;                    ! Value of location at time of most recent
+                                    ! room description printed out
 
 ! ------------------------------------------------------------------------------
 !   List writing  (style bits are defined as Constants in "verblibm.h")
@@ -171,13 +192,16 @@ Global lastdesc;                    ! Value of location at time of most recent r
 
 Global c_style;                     ! Current list-writer style
 Global lt_value;                    ! Common value of list_together
-Global listing_together;            ! Object number of one member of a group being listed together
+Global listing_together;            ! Object number of one member of a group
+                                    ! being listed together
 Global listing_size;                ! Size of such a group
-Global wlf_indent;                  ! Current level of indentation printed by WriteListFrom()
+Global wlf_indent;                  ! Current level of indentation printed by
+                                    ! WriteListFrom()
 
-Global inventory_stage = 1;         ! 1 or 2 according to the context in which "invent" routines
-                                    ! of objects are called
-Global inventory_style;             ! List-writer style currently used while printing inventories
+Global inventory_stage = 1;         ! 1 or 2 according to the context in which
+                                    ! "invent" routines of objects are called
+Global inventory_style;             ! List-writer style currently used while
+                                    ! printing inventories
 ! ------------------------------------------------------------------------------
 !   Menus and printing
 ! ------------------------------------------------------------------------------
@@ -190,8 +214,14 @@ Global item_name = "---";
 
 Global lm_n;                        ! Parameters used by LibraryMessages
 Global lm_o;                        ! mechanism
+Global lm_s;
 
 #Ifdef DEBUG;
+Constant DEBUG_MESSAGES $0001;
+Constant DEBUG_ACTIONS  $0002;
+Constant DEBUG_TIMERS   $0004;
+Constant DEBUG_CHANGES  $0008;
+Constant DEBUG_VERBOSE  $0080;
 Global debug_flag;                  ! Bitmap of flags for tracing actions,
                                     ! calls to object routines, etc.
 Global x_scope_count;               ! Used in printing a list of everything
@@ -199,11 +229,14 @@ Global x_scope_count;               ! Used in printing a list of everything
 
 ! five for colour control
 ! see http://www.inform-fiction.org/patches/L61007.html
+! To enable colour define a constant or Global: COLOR or COLOUR
+!Global clr_on;                      ! has colour been enabled by the player?
+#Ifdef COLOUR;
 Global clr_fg = 1;                  ! foreground colour
 Global clr_bg = 1;                  ! background colour
 Global clr_fgstatus = 1;            ! foreground colour of statusline
 Global clr_bgstatus = 1;            ! background colour of statusline
-Global clr_on;                      ! has colour been enabled by the player?
+#Endif; ! COLOUR
 Global statuswin_current;           ! if writing to top window
 
 Constant CLR_DEFAULT 1;
@@ -232,25 +265,31 @@ Global inp2;                        ! 0 (nothing), 1 (number) or second noun
 Global noun;                        ! First noun or numerical value
 Global second;                      ! Second noun or numerical value
 
-Global keep_silent;                 ! If true, attempt to perform the action silently (e.g. for
-                                    ! implicit takes, implicit opening of unlocked doors)
+Global keep_silent;                 ! If true, attempt to perform the action
+                                    ! silently (e.g. for implicit takes,
+                                    ! implicit opening of unlocked doors)
 
 Global reason_code;                 ! Reason for calling a "life" rule
                                     ! (an action or fake such as ##Kiss)
 
-Global receive_action;              ! Either ##PutOn or ##Insert, whichever is action being tried
-                                    ! when an object's "before" rule is checking "Receive"
+Global receive_action;              ! Either ##PutOn or ##Insert, whichever is
+                                    ! action being tried when an object's
+                                    ! "before" rule is checking "Receive"
 
 ! ==============================================================================
 !   Parser variables: first, for communication to the parser
 ! ------------------------------------------------------------------------------
 
-Global parser_trace = 0;            ! Set this to 1 to make the parser trace tokens and lines
+Global parser_trace = 0;            ! Set this to 1 to make the parser trace
+                                    ! tokens and lines
 Global parser_action;               ! For the use of the parser when calling
 Global parser_one;                  ! user-supplied routines
 Global parser_two;                  !
 Array  inputobjs       --> 16;      ! For parser to write its results in
-Global parser_inflection;           ! A property (usually "name") to find object names in
+Global parser_inflection;           ! A property (usually "name") to find
+                                    ! object names in
+Global parser_inflection_func;      ! Programmer sets this to true when
+                                    ! parser_infection is a function
 
 ! ------------------------------------------------------------------------------
 !   Parser output
@@ -259,6 +298,10 @@ Global parser_inflection;           ! A property (usually "name") to find object
 Global actor;                       ! Person asked to do something
 Global actors_location;             ! Like location, but for the actor
 Global meta;                        ! Verb is a meta-command (such as "save")
+
+#Ifdef INFIX;
+Global infix_verb;                  ! Verb is an Infix command
+#Endif;
 
 Array  multiple_object --> 64;      ! List of multiple parameters
 Global multiflag;                   ! Multiple-object flag passed to actions
@@ -271,6 +314,7 @@ Global special_number;              ! Number typed for "special" token
 Global parsed_number;               ! For user-supplied parsing routines
 Global consult_from;                ! Word that a "consult" topic starts on
 Global consult_words;               ! ...and number of words in topic
+Global asking_player;               ! True during disambiguation question
 
 ! ------------------------------------------------------------------------------
 !   Implicit taking
@@ -332,11 +376,15 @@ Global special_number2;             ! Second number, if two were typed
 !   Inferences and looking ahead
 ! ------------------------------------------------------------------------------
 
-Global params_wanted;               ! Number of parameters needed (which may change in parsing)
+Global params_wanted;               ! Number of parameters needed
+                                    ! (which may change in parsing)
 
-Global inferfrom;                   ! The point from which the rest of the command must be inferred
+Global inferfrom;                   ! The point from which the rest of the
+                                    ! command must be inferred
 Global inferword;                   ! And the preposition inferred
 Global dont_infer;                  ! Another dull flag
+Global no_infer_message = false;    ! Use in ChooseObjects to suppress
+                                    ! an inference message.
 
 Global action_to_be;                ! (If the current line were accepted.)
 Global action_reversed;             ! (Parameters would be reversed in order.)
@@ -353,12 +401,15 @@ Global token_filter;                ! For noun filtering by user routines
 Global length_of_noun;              ! Set by NounDomain to no of words in noun
 
 #Ifdef TARGET_ZCODE;
-Constant REPARSE_CODE = 10000;      ! Signals "reparse the text" as a reply from NounDomain
+Constant REPARSE_CODE = 10000;      ! Signals "reparse the text" as a reply
+                                    ! from NounDomain
 #Ifnot; ! TARGET_GLULX
-Constant REPARSE_CODE = $40000000;  ! The parser rather gunkily adds addresses to REPARSE_CODE for
-                                    ! some purposes. And expects the result to be greater than
-                                    ! REPARSE_CODE (signed comparison). So Glulx Inform is limited
-                                    ! to a single gigabyte of storage, for the moment.
+Constant REPARSE_CODE = $40000000;  ! The parser rather gunkily adds addresses
+                                    ! to REPARSE_CODE for some purposes and
+                                    ! expects the result to be greater than
+                                    ! REPARSE_CODE (signed comparison).
+                                    ! So Glulx Inform is limited to a single
+                                    ! gigabyte of storage, for the moment.
 #Endif; ! TARGET_
 
 Global lookahead;                   ! The token after the one now being matched
@@ -377,18 +428,27 @@ Global indef_owner;                 ! Object which must hold these items
 Global indef_cases;                 ! Possible gender and numbers of them
 Global indef_possambig;             ! Has a possibly dangerous assumption
                                     ! been made about meaning of a descriptor?
-Global indef_nspec_at;              ! Word at which a number like "two" was parsed
-                                    ! (for backtracking)
+Global indef_nspec_at;              ! Word at which a number like "two" was
+                                    ! parsed (for backtracking)
 Global allow_plurals;               ! Whether plurals presently allowed or not
 
-Global take_all_rule;               ! Slightly different rules apply to "take all" than other uses
-                                    ! of multiple objects, to make adjudication produce more
-                                    ! pragmatically useful results
+Global take_all_rule;               ! Slightly different rules apply to
+                                    ! "take all" than other uses of multiple
+                                    ! objects, to make adjudication produce
+                                    ! more pragmatically useful results
                                     ! (Not a flag: possible values 0, 1, 2)
 
 Global dict_flags_of_noun;          ! Of the noun currently being parsed
                                     ! (a bitmap in #dict_par1 format)
-Global pronoun_word;                ! Records which pronoun ("it", "them", ...) caused an error
+Constant DICT_VERB $01;
+Constant DICT_META $02;
+Constant DICT_PLUR $04;
+Constant DICT_PREP $08;
+Constant DICT_X654 $70;
+Constant DICT_NOUN $80;
+
+Global pronoun_word;                ! Records which pronoun ("it", "them", ...)
+                                    ! caused an error
 Global pronoun_obj;                 ! And what obj it was thought to refer to
 Global pronoun__word;               ! Saved value
 Global pronoun__obj;                ! Saved value
@@ -420,13 +480,14 @@ Global placed_in_flag;              ! To do with PlaceInScope
 !   The match list of candidate objects for a given token
 ! ------------------------------------------------------------------------------
 
-Constant MATCH_LIST_SIZE = 128;
-Array  match_list    --> 64;        ! An array of matched objects so far
-Array  match_classes --> 64;        ! An array of equivalence classes for them
-Array  match_scores --> 64;         ! An array of match scores for them
+Constant MATCH_LIST_SIZE = 64;
+Array  match_list    --> MATCH_LIST_SIZE; ! An array of matched objects so far
+Array  match_classes --> MATCH_LIST_SIZE; ! An array of equivalence classes for them
+Array  match_scores --> MATCH_LIST_SIZE;  ! An array of match scores for them
 Global number_matched;              ! How many items in it?  (0 means none)
 Global number_of_classes;           ! How many equivalence classes?
 Global match_length;                ! How many words long are these matches?
+Global saved_ml;
 Global match_from;                  ! At what word of the input do they begin?
 Global bestguess_score;             ! What did the best-guess object score?
 
@@ -436,37 +497,76 @@ Global bestguess_score;             ! What did the best-guess object score?
 
 #Ifdef TARGET_ZCODE;
 
-Constant INPUT_BUFFER_LEN = 120;    ! Length of buffer array (although we leave an extra byte
-                                    ! to allow for interpreter bugs)
+! 'buffer' holds the input line as typed by the player
+!
+!       buffer->0                     INPUT_BUFFER_LEN - WORDSIZE
+!       buffer->1                     Number of characters input by player
+!       buffer->2 ... buffer->121     The actual characters
+!       buffer->122                   Spare byte to allow for 'terp bugs
+!
+! 'parse' holds the result of parsing that line into dictionary words
+!
+!       parse->0                      MAX_BUFFER_WORDS
+!       parse->1                      Number of words input by player
+!
+!       parse-->1                     Dictionary addr of first input word
+!       parse->4                      Number of characters in the word
+!       parse->5                      Start position in 'buffer' of the word
+!
+!       parse-->3  parse->8,9         Same data for second input word
+!       ...
+!       parse-->29 parse->60,61       Same data for MAX_BUFFER_WORDS input word
+!       parse->62,63,64               Spare bytes (not sure why)
 
-Array  buffer    -> 123;            ! Buffer for parsing main line of input
+
+Constant INPUT_BUFFER_LEN = WORDSIZE + 120;  ! 120 is limit on input chars
+Constant MAX_BUFFER_WORDS = 15;              ! Limit on input words
+
+Array  buffer  -> INPUT_BUFFER_LEN + 1;      ! For main line of input
+Array  buffer2 -> INPUT_BUFFER_LEN + 1;      ! For supplementary questions
+Array  buffer3 -> INPUT_BUFFER_LEN + 1;      ! Retaining input for "AGAIN"
+
 #Ifdef VN_1630;
-Array  parse     buffer 63;         ! Parse table mirroring it
-Array  parse2    buffer 63;         !
+Array  parse   buffer (MAX_BUFFER_WORDS * 4) + 3;   ! Parsed data from 'buffer'
+Array  parse2  buffer (MAX_BUFFER_WORDS * 4) + 3;   ! Parsed data from 'buffer2'
 #Ifnot;
-Array  parse     -> 65;             ! Parse table mirroring it
-Array  parse2    -> 65;             !
++Array  parse   -> 2 + (MAX_BUFFER_WORDS * 4) + 3;
++Array  parse2  -> 2 + (MAX_BUFFER_WORDS * 4) + 3;
 #Endif; ! VN_
-Array  buffer2   -> 123;            ! Buffers for supplementary questions
-Array  buffer3   -> 123;            ! Buffer retaining input for "again"
 
 #Ifnot; ! TARGET_GLULX
 
-Constant INPUT_BUFFER_LEN = 260;    ! No extra byte necessary
-Constant MAX_BUFFER_WORDS = 20;
-Constant PARSE_BUFFER_LEN = 244;    ! 4 + MAX_BUFFER_WORDS*4;
+! 'buffer' holds the input line as typed by the player
+!
+!       buffer-->0                    Number of characters input by player
+!       buffer->4 ... buffer->259     The actual characters
+!
+! 'parse' holds the result of parsing that line into dictionary words
+!
+!       parse-->0                     Number of words input by player
+!
+!       parse-->1                     Dictionary addr of first input word
+!       parse-->2                     Number of characters in the word
+!       parse-->3                     Start position in 'buffer' of the word
+!
+!       parse-->4,5,6                 Same data for second input word
+!       ...
+!       parse-->58,59,60              Same data for MAX_BUFFER_WORDS input word
+
+Constant INPUT_BUFFER_LEN = WORDSIZE + 256;    ! 256 is limit on input chars
+Constant MAX_BUFFER_WORDS = 20;                ! Limit on input words
 
 #Ifdef VN_1630;
-Array  buffer    buffer INPUT_BUFFER_LEN;
-Array  buffer2   buffer INPUT_BUFFER_LEN;
-Array  buffer3   buffer INPUT_BUFFER_LEN;
+Array  buffer  buffer (INPUT_BUFFER_LEN-WORDSIZE);  ! For main line of input
+Array  buffer2 buffer (INPUT_BUFFER_LEN-WORDSIZE);  ! For supplementary questions
+Array  buffer3 buffer (INPUT_BUFFER_LEN-WORDSIZE);  ! Retaining input for "AGAIN"
 #Ifnot;
-Array  buffer    -> INPUT_BUFFER_LEN;
-Array  buffer2   -> INPUT_BUFFER_LEN;
-Array  buffer3   -> INPUT_BUFFER_LEN;
-#Endif;
-Array  parse     --> PARSE_BUFFER_LEN/WORDSIZE;
-Array  parse2    --> PARSE_BUFFER_LEN/WORDSIZE;
+Array  buffer  -> INPUT_BUFFER_LEN;
+Array  buffer2 -> INPUT_BUFFER_LEN;
+Array  buffer3 -> INPUT_BUFFER_LEN;
+#Endif; ! VN_
+Array  parse   --> 1 + (MAX_BUFFER_WORDS * 3);      ! Parsed data from 'buffer'
+Array  parse2  --> 1 + (MAX_BUFFER_WORDS * 3);      ! Parsed data from 'buffer2'
 
 #Endif; ! TARGET_
 
@@ -475,6 +575,7 @@ Constant comma_word = 'comma,';     ! An "untypeable word" used to substitute
 
 Global wn;                          ! Word number within "parse" (from 1)
 Global num_words;                   ! Number of words typed
+Global num_desc;                    ! Number of descriptors typed
 Global verb_word;                   ! Verb word (eg, take in "take all" or
                                     ! "dwarf, take all") - address in dict
 Global verb_wordnum;                ! its number in typing order (eg, 1 or 3)
@@ -483,16 +584,19 @@ Global usual_grammar_after;         ! Point from which usual grammar is parsed (
 
 Global oops_from;                   ! The "first mistake" word number
 Global saved_oops;                  ! Used in working this out
-Array  oops_workspace -> 64;        ! Used temporarily by "oops" routine
 
-Global held_back_mode;              ! Flag: is there some input from last time
-Global hb_wn;                       ! left over?  (And a save value for wn.)
-                                    ! (Used for full stops and "then".)
+Constant OOPS_WORKSPACE_LEN 64;     ! Used temporarily by "oops" routine
+Array  oops_workspace -> OOPS_WORKSPACE_LEN;
+
+Global caps_mode;                   ! Keep track of (The) with 'proper' caps
+Global print_anything_result;       ! Return value from a PrintAny() routine
+Global initial_lookmode;            ! Default, or set in Initialise()
+Global before_first_turn;           ! True until after initial LOOK
 
 ! ----------------------------------------------------------------------------
 
-Array PowersOfTwo_TB                ! Used in converting case numbers to case bitmaps
-  --> $$100000000000
+Array PowersOfTwo_TB                ! Used in converting case numbers to case
+  --> $$100000000000                ! bitmaps
       $$010000000000
       $$001000000000
       $$000100000000
@@ -554,8 +658,12 @@ Object  thedark "(darkness object)"
         short_name DARKNESS__TX,
         description [;  return L__M(##Miscellany, 17); ];
 
-Object  selfobj "(self object)"
-  with  short_name  [;  return L__M(##Miscellany, 18); ],
+! If you want to use the third-person of the narrative voice, you will 
+! need to replace this selfobj with your own.
+
+Object  selfobj	 "(self object)"
+  with name ',a' ',b' ',c' ',d' ',e',
+        short_name  YOURSELF__TX,
         description [;  return L__M(##Miscellany, 19); ],
         before NULL,
         after NULL,
@@ -563,13 +671,18 @@ Object  selfobj "(self object)"
         each_turn NULL,
         time_out NULL,
         describe NULL,
+        article "the",
         add_to_scope 0,
         capacity 100,
         parse_name 0,
         orders 0,
         number 0,
-        before_implicit NULL,
+        narrative_voice 2,
+	nameless true,
+        posture 0,
+        before_implicit [;Take: return 2;],
   has   concealed animate proper transparent;
+
 
 ! ============================================================================
 !  The definition of the token-numbering system used by Inform.
@@ -834,6 +947,13 @@ Object  InformParser "(Inform Parser)"
 
 #Ifdef TARGET_ZCODE;
 
+[ GetNthChar a_buffer n i;
+    for (i = 0: a_buffer->(2+i) == ' ': i++) {
+	if (i > a_buffer->(1)) return false;
+    }
+    return a_buffer->(2+i+n);
+];
+
 [ KeyboardPrimitive  a_buffer a_table;
     read a_buffer a_table;
 
@@ -863,6 +983,13 @@ Object  InformParser "(Inform Parser)"
 ];
 
 #Ifnot; ! TARGET_GLULX
+
+[ GetNthChar a_buffer n i;
+    for (i = 0: a_buffer->(4+i) == ' ': i++) {
+	if (i > a_buffer->(1)) return false;
+    }
+    return a_buffer->(4+i+n);
+];
 
 [ KeyCharPrimitive win nostat done res ix jx ch;
     jx = ch; ! squash compiler warnings
@@ -921,6 +1048,7 @@ Object  InformParser "(Inform Parser)"
                 }
         }
         ix = HandleGlkEvent(gg_event, 1, gg_arguments);
+        if (ix == 0) ix = LibraryExtensions.RunWhile(ext_handleglkevent, 0, gg_event, 1, gg_arguments);
         if (ix == 2) {
             res = gg_arguments-->0;
             done = true;
@@ -961,6 +1089,7 @@ Object  InformParser "(Inform Parser)"
     while (~~done) {
         glk($00C0, gg_event); ! select
         ix = HandleGlkEvent(gg_event, 1, gg_arguments);
+        if (ix == 0) ix = LibraryExtensions.RunWhile(ext_handleglkevent, 0, gg_event, 1, gg_arguments);
         if (ix == 2) {
             key = gg_arguments-->0;
             done = true;
@@ -1011,6 +1140,7 @@ Object  InformParser "(Inform Parser)"
             }
         }
         ix = HandleGlkEvent(gg_event, 0, a_buffer);
+        if (ix == 0) ix = LibraryExtensions.RunWhile(ext_handleglkevent, 0, gg_event, 0, a_buffer);
         if (ix == 2) done = true;
         else if (ix == -1) done = false;
     }
@@ -1038,29 +1168,26 @@ Object  InformParser "(Inform Parser)"
     ! Save the start of the buffer, in case "oops" needs to restore it
     ! to the previous time's buffer
 
-    for (i=0 : i<64 : i++) oops_workspace->i = a_buffer->i;
+    for (i=0 : i<OOPS_WORKSPACE_LEN : i++) oops_workspace->i = a_buffer->i;
 
     ! In case of an array entry corruption that shouldn't happen, but would be
     ! disastrous if it did:
 
     #Ifdef TARGET_ZCODE;
-    a_buffer->0 = INPUT_BUFFER_LEN;
-    a_table->0 = 15;  ! Allow to split input into this many words
+    a_buffer->0 = INPUT_BUFFER_LEN - WORDSIZE;
+    a_table->0  = MAX_BUFFER_WORDS; ! Allow to split input into this many words
     #Endif; ! TARGET_
 
     ! Print the prompt, and read in the words and dictionary addresses
 
     L__M(##Prompt);
-    AfterPrompt();
+    if (AfterPrompt() == 0) LibraryExtensions.RunAll(ext_afterprompt);
     #IfV5;
     DrawStatusLine();
     #Endif; ! V5
+
     KeyboardPrimitive(a_buffer, a_table);
-    #Ifdef TARGET_ZCODE;
-    nw = a_table->1;
-    #Ifnot; ! TARGET_GLULX
-    nw = a_table-->0;
-    #Endif; ! TARGET_
+    nw = NumberWords(a_table);
 
     ! If the line was blank, get a fresh line
     if (nw == 0) {
@@ -1076,7 +1203,7 @@ Object  InformParser "(Inform Parser)"
 
     if (a_buffer->WORDSIZE == COMMENT_CHARACTER) {
         #Ifdef TARGET_ZCODE;
-        if ((HDR_GAMEFLAGS-->0) & 1 || xcommsdir)
+        if ((HDR_GAMEFLAGS-->0) & $0001 || xcommsdir)
                                            L__M(##Miscellany, 54);
         else                               L__M(##Miscellany, 55);
         #Ifnot; ! TARGET_GLULX
@@ -1176,8 +1303,8 @@ Object  InformParser "(Inform Parser)"
     ! Repair the buffer to the text that was in it before the "oops"
     ! was typed:
 
-    for (i=0 : i<64 : i++) a_buffer->i = oops_workspace->i;
-    Tokenise__(a_buffer,a_table);
+    for (i=0 : i < OOPS_WORKSPACE_LEN : i++) a_buffer->i = oops_workspace->i;
+    Tokenise__(a_buffer, a_table);
 
     ! Work out the position in the buffer of the word to be corrected:
 
@@ -1189,6 +1316,12 @@ Object  InformParser "(Inform Parser)"
     w2 = a_table-->(3*oops_from - 1); ! Length of word to go
     #Endif; ! TARGET_
 
+#IfDef OOPS_CHECK;
+    print "[~";
+    for (i=0 : i<w2 : i++) for (i=0 : i<w2 : i++) print (char)a_buffer->(i+w);
+    print "~ --> ~";
+#Endif;
+
     ! Write spaces over the word to be corrected:
 
     for (i=0 : i<w2 : i++) a_buffer->(i+w) = ' ';
@@ -1199,24 +1332,26 @@ Object  InformParser "(Inform Parser)"
             a_buffer->i = a_buffer->(i-x2+w2);
 
         ! ...increasing buffer size accordingly.
-        #Ifdef TARGET_ZCODE;
-        a_buffer->1 = (a_buffer->1) + (x2-w2);
-        #Ifnot; ! TARGET_GLULX
-        a_buffer-->0 = (a_buffer-->0) + (x2-w2);
-        #Endif; ! TARGET_
+        SetKeyBufLength(GetKeyBufLength(a_buffer) + (x2-w2), a_buffer);
     }
 
     ! Write the correction in:
 
-    for (i=0 : i<x2 : i++) a_buffer->(i+w) = buffer2->(i+x1);
+    for (i=0 : i<x2 : i++) {
+        a_buffer->(i+w) = buffer2->(i+x1);
+#IfDef OOPS_CHECK;
+        print (char) buffer2->(i+x1);
+#Endif;
+    }
+
+#IfDef OOPS_CHECK;
+        print "~]^^";
+#Endif;
 
     Tokenise__(a_buffer, a_table);
-    #Ifdef TARGET_ZCODE;
-    nw = a_table->1;
-    #Ifnot; ! TARGET_GLULX
-    nw = a_table-->0;
-    #Endif; ! TARGET_
+    nw=NumberWords(a_table);
 
+!    saved_ml = 0;
     return nw;
 ]; ! end of Keyboard
 
@@ -1238,10 +1373,14 @@ Object  InformParser "(Inform Parser)"
 !   The strategic points (A) to (K) are marked in the commentary.
 !
 !   Note that there are three different places where a return can happen.
+!
+! held_back_mode       Flag: is there some input from last time left over?
+! hb_wn                        (And a save value for wn.)
+!                      (Used for full stops and "then".)
 ! ----------------------------------------------------------------------------
 
 [ Parser__parse  results   syntax line num_lines line_address i j k
-                           token l m;
+                           token l m line_etype vw held_back_mode hb_wn;
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
@@ -1259,7 +1398,7 @@ Object  InformParser "(Inform Parser)"
         rtrue;
     }
 
-    if (held_back_mode == 1) {
+    if (held_back_mode ~= 0) {
         held_back_mode = 0;
         Tokenise__(buffer, parse);
         jump ReParse;
@@ -1267,20 +1406,25 @@ Object  InformParser "(Inform Parser)"
 
   .ReType;
 
-    Keyboard(buffer,parse);
+    Keyboard(buffer, parse);
+
+#Ifdef INFIX;
+    ! An Infix verb is a special kind of meta verb.  We mark them here.
+    if (GetNthChar(buffer, 0) == ';')
+	infix_verb = true;
+    else
+	infix_verb = false;
+#Endif;
 
   .ReParse;
 
     parser_inflection = name;
+    parser_inflection_func = false;
 
     ! Initially assume the command is aimed at the player, and the verb
     ! is the first word
 
-    #Ifdef TARGET_ZCODE;
-    num_words = parse->1;
-    #Ifnot; ! TARGET_GLULX
-    num_words = parse-->0;
-    #Endif; ! TARGET_
+    num_words = NumberWords();
     wn = 1;
 
     #Ifdef LanguageToInformese;
@@ -1291,12 +1435,13 @@ Object  InformParser "(Inform Parser)"
     #Endif; ! V5
     #Endif; ! LanguageToInformese
 
-    BeforeParsing();
-    #Ifdef TARGET_ZCODE;
-    num_words = parse->1;
-    #Ifnot; ! TARGET_GLULX
-    num_words = parse-->0;
-    #Endif; ! TARGET_
+    if (BeforeParsing() == false) {
+        LibraryExtensions.ext_number_1 = wn;    ! Set "between calls" functionality to restore wn each pass
+        LibraryExtensions.BetweenCalls = LibraryExtensions.RestoreWN;
+        LibraryExtensions.RunWhile(ext_beforeparsing, false);
+        LibraryExtensions.BetweenCalls = 0;     ! Turn off "between calls" functionality
+     }
+    num_words = NumberWords();
 
     k=0;
     #Ifdef DEBUG;
@@ -1304,11 +1449,7 @@ Object  InformParser "(Inform Parser)"
         print "[ ";
         for (i=0 : i<num_words : i++) {
 
-            #Ifdef TARGET_ZCODE;
-            j = parse-->(i*2 + 1);
-            #Ifnot; ! TARGET_GLULX
-            j = parse-->(i*3 + 1);
-            #Endif; ! TARGET_
+            j = WordValue(i+1);
             k = WordAddress(i+1);
             l = WordLength(i+1);
             print "~"; for (m=0 : m<l : m++) print (char) k->m; print "~ ";
@@ -1363,18 +1504,27 @@ Object  InformParser "(Inform Parser)"
             L__M(##Miscellany, 20);
             jump ReType;
         }
-        #Ifdef TARGET_ZCODE;
-        if (buffer3->1 == 0) {
+        if (GetKeyBufLength(buffer3) == 0) {
             L__M(##Miscellany, 21);
             jump ReType;
         }
-        #Ifnot; ! TARGET_GLULX
-        if (buffer3-->0 == 0) {
-            L__M(##Miscellany, 21);
-            jump ReType;
-        }
-        #Endif; ! TARGET_
-        for (i=0 : i<INPUT_BUFFER_LEN : i++) buffer->i = buffer3->i;
+
+        if (WordAddress(verb_wordnum) == buffer + WORDSIZE) { ! not held back
+            ! splice rest of buffer onto end of buffer3
+            i = GetKeyBufLength(buffer3);
+            while (buffer3 -> (i + WORDSIZE - 1) == ' ' or '.')
+                i--;
+            j = i - WordLength(verb_wordnum);  ! amount to move buffer up by
+            if (j > 0) {
+                for (m=INPUT_BUFFER_LEN-1 : m>=WORDSIZE+j : m--)
+                    buffer->m = buffer->(m-j);
+                SetKeyBufLength(GetKeyBufLength()+j);
+                }
+            for (m=WORDSIZE : m<WORDSIZE+i : m++) buffer->m = buffer3->m;
+            if (j < 0) for (:m<WORDSIZE+i-j : m++) buffer->m = ' ';
+         }
+        else
+            for (i=0 : i<INPUT_BUFFER_LEN : i++) buffer->i = buffer3->i;
         jump ReParse;
     }
 
@@ -1385,7 +1535,7 @@ Object  InformParser "(Inform Parser)"
 
     if (usual_grammar_after == 0) {
         j = verb_wordnum;
-        i = RunRoutines(actor, grammar); 
+        i = RunRoutines(actor, grammar);
         #Ifdef DEBUG;
         if (parser_trace >= 2 && actor.grammar ~= 0 or NULL)
             print " [Grammar property returned ", i, "]^";
@@ -1406,8 +1556,9 @@ Object  InformParser "(Inform Parser)"
 
         if (i == 1) {
             results-->0 = action;
-            results-->1 = noun;
-            results-->2 = second;
+            results-->1 = 2;		! Number of parameters
+            results-->2 = noun;
+            results-->3 = second;
             rtrue;
         }
         if (i ~= 0) { verb_word = i; wn--; verb_wordnum--; }
@@ -1431,7 +1582,7 @@ Object  InformParser "(Inform Parser)"
     ! If the first word is not listed as a verb, it must be a direction
     ! or the name of someone to talk to
 
-    if (verb_word == 0 || ((verb_word->#dict_par1) & 1) == 0) {
+    if (verb_word == 0 || ((verb_word->#dict_par1) & DICT_VERB) == 0) {
 
         ! So is the first word an object contained in the special object "compass"
         ! (i.e., a direction)?  This needs use of NounDomain, a routine which
@@ -1470,8 +1621,10 @@ Object  InformParser "(Inform Parser)"
                 i=NextWord();
                 if (i == comma_word) jump Conversation;
             }
-            verb_word = UnknownVerb(verb_word);
-            if (verb_word ~= 0) jump VerbAccepted;
+            vw = verb_word;
+            verb_word = UnknownVerb(vw);
+            if (verb_word == false) verb_word = LibraryExtensions.RunWhile(ext_unknownverb, false, vw);
+            if (verb_word) jump VerbAccepted;
         }
         best_etype = VERB_PE;
         jump GiveError;
@@ -1559,13 +1712,13 @@ Object  InformParser "(Inform Parser)"
     ! We now definitely have a verb, not a direction, whether we got here by the
     ! "take ..." or "person, take ..." method.  Get the meta flag for this verb:
 
-    meta = ((verb_word->#dict_par1) & 2)/2;
+    meta = (verb_word->#dict_par1) & DICT_META;
 
     ! You can't order other people to "full score" for you, and so on...
 
-    if (meta == 1 && actor ~= player) {
+    if (meta && actor ~= player) {
         best_etype = VERB_PE;
-        meta = 0;
+        meta = false;
         jump GiveError;
     }
 
@@ -1599,7 +1752,7 @@ Object  InformParser "(Inform Parser)"
     #Endif; ! DEBUG
 
     best_etype = STUCK_PE; nextbest_etype = STUCK_PE;
-    multiflag = false;
+    multiflag = false; saved_oops = 0;
 
     ! "best_etype" is the current failure-to-match error - it is by default
     ! the least informative one, "don't understand that sentence".
@@ -1641,13 +1794,14 @@ Object  InformParser "(Inform Parser)"
         ! any parameters on the line yet, or any special numbers; the multiple
         ! object is still empty.
 
+        token_filter = 0;
         not_holding = 0;
         inferfrom = 0;
         parameters = 0;
         nsns = 0; special_word = 0; special_number = 0;
         multiple_object-->0 = 0;
         multi_context = 0;
-        etype = STUCK_PE;
+        etype = STUCK_PE; line_etype = 100;
 
         ! Put the word marker back to just after the verb
 
@@ -1689,31 +1843,70 @@ Object  InformParser "(Inform Parser)"
 
                     pcount++;
                     if (line_ttype-->pcount == PREPOSITION_TT) {
-                        while (line_ttype-->pcount == PREPOSITION_TT) pcount++;
+                        ! skip ahead to a preposition word in the input
+                        do {
+                            l = NextWord();
+                        } until ((wn > num_words) ||
+                                 (l && (l->#dict_par1) & DICT_PREP ~= 0));
+
+                        if (wn > num_words) {
+                            #Ifdef DEBUG;
+                            if (parser_trace >= 2)
+                                print " [Look-ahead aborted: prepositions missing]^";
+                            #Endif;
+                            jump EmptyLine;
+                        }
+
+                        do {
+                            if (PrepositionChain(l, pcount) ~= -1) {
+                                ! advance past the chain
+                                if ((line_token-->pcount)->0 & $20 ~= 0) {
+                                    pcount++;
+                                    while ((line_token-->pcount ~= ENDIT_TOKEN) &&
+                                           ((line_token-->pcount)->0 & $10 ~= 0))
+                                        pcount++;
+                                } else {
+                                    pcount++;
+                                }
+                            } else {
+                                ! try to find another preposition word
+                                do {
+                                    l = NextWord();
+                                } until ((wn >= num_words) ||
+                                         (l && (l->#dict_par1) & 8 ~= 0));
+
+                                if (l && (l->#dict_par1) & 8) continue;
+
+                                ! lookahead failed
+                                #Ifdef DEBUG;
+                                if (parser_trace >= 2)
+                                    print " [Look-ahead aborted: prepositions don't match]^";
+                                #Endif;
+                                jump LineFailed;
+                            }
+                            l = NextWord();
+                        } until (line_ttype-->pcount ~= PREPOSITION_TT);
+
+                        .EmptyLine;
+                        ! put back the non-preposition we just read
+                        wn--;
 
                         if ((line_ttype-->pcount == ELEMENTARY_TT) && (line_tdata-->pcount == NOUN_TOKEN)) {
+                            l = Descriptors();  ! skip past THE etc
+                            if (l~=0) etype=l;  ! don't allow multiple objects
+                            l = NounDomain(actors_location, actor, NOUN_TOKEN);
 
-                            ! Advance past the last preposition
-
-                            while (wn < num_words) {
-                                l=NextWord();
-                                if ( l && (l->#dict_par1) &8 ) {   ! if preposition
-                                    l = Descriptors();  ! skip past THE etc
-                                    if (l~=0) etype=l;  ! don't allow multiple objects
-                                    l = NounDomain(actors_location, actor, NOUN_TOKEN);
-                                    #Ifdef DEBUG;
-                                    if (parser_trace >= 2) {
-                                        print " [Advanced to ~noun~ token: ";
-                                        if (l == REPARSE_CODE) print "re-parse request]^";
-                                        if (l == 1) print "but multiple found]^";
-                                        if (l == 0) print "error ", etype, "]^";
-                                        if (l >= 2) print (the) l, "]^";
-                                    }
-                                    #Endif; ! DEBUG
-                                    if (l == REPARSE_CODE) jump ReParse;
-                                    if (l >= 2) advance_warning = l;
-                                }
+                            #Ifdef DEBUG;
+                            if (parser_trace >= 2) {
+                                print " [Advanced to ~noun~ token: ";
+                                if (l == REPARSE_CODE) print "re-parse request]^";
+                                if (l == 1) print "but multiple found]^";
+                                if (l == 0) print "error ", etype, "]^";
+                                if (l >= 2) print (the) l, "]^";
                             }
+                            #Endif; ! DEBUG
+                            if (l == REPARSE_CODE) jump ReParse;
+                            if (l >= 2) advance_warning = l;
                         }
                     }
                     break;
@@ -1736,10 +1929,11 @@ Object  InformParser "(Inform Parser)"
 
         not_holding = 0;
         inferfrom = 0;
+        inferword = 0;
         parameters = 0;
         nsns = 0; special_word = 0; special_number = 0;
         multiple_object-->0 = 0;
-        etype = STUCK_PE;
+        etype = STUCK_PE; line_etype = 100;
         wn = verb_wordnum+1;
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1766,12 +1960,15 @@ Object  InformParser "(Inform Parser)"
             if (token ~= ENDIT_TOKEN) {
                 scope_reason = PARSING_REASON;
                 parser_inflection = name;
+                parser_inflection_func = false;
                 AnalyseToken(token);
 
                 if (action_to_be == ##AskTo && found_ttype == ELEMENTARY_TT &&
-                    found_tdata == TOPIC_TOKEN)
-                {
-                    l=inputobjs-->2;
+                    found_tdata == TOPIC_TOKEN && line_etype == 100) {
+                    if (actor ~= player) {
+                        best_etype = VERB_PE; jump GiveError;
+                    }
+                    l = inputobjs-->2;
                     wn--;
                     j = wn;
                     jump Conversation2;
@@ -1812,7 +2009,10 @@ Object  InformParser "(Inform Parser)"
                 #Endif; ! DEBUG
 
                 if (l == REPARSE_CODE) jump ReParse;
-                if (l == false) break;
+                if (l == false) {
+                    if (etype < line_etype) line_etype = etype;
+                    if (etype == STUCK_PE || wn >= num_words) break;
+                }
             }
             else {
 
@@ -1824,9 +2024,10 @@ Object  InformParser "(Inform Parser)"
                 ! However, if the superfluous text begins with a comma or "then" then
                 ! take that to be the start of another instruction
 
+                if (line_etype < 100) break;
                 if (wn <= num_words) {
                     l = NextWord();
-                    if (l == THEN1__WD or THEN2__WD or THEN3__WD or comma_word) {
+                    if (l == THEN1__WD or THEN2__WD or THEN3__WD or comma_word or AND1__WD) {
                         held_back_mode = 1; hb_wn = wn-1;
                     }
                     else {
@@ -1867,9 +2068,10 @@ Object  InformParser "(Inform Parser)"
 
                 ! ...explain any inferences made (using the pattern)...
 
-                if (inferfrom ~= 0) {
+                if (inferfrom ~= 0 && no_infer_message == false) {
                     print "("; PrintCommand(inferfrom); print ")^";
                 }
+		no_infer_message = false;
 
                 ! ...copy the action number, and the number of parameters...
 
@@ -1934,9 +2136,11 @@ Object  InformParser "(Inform Parser)"
             } ! end of if(token ~= ENDIT_TOKEN) else
         } ! end of for(pcount++)
 
+        .LineFailed;
         ! The line has failed to match.
         ! We continue the outer "for" loop, trying the next line in the grammar.
 
+        if (line_etype < 100) etype = line_etype;
         if (etype > best_etype) best_etype = etype;
         if (etype ~= ASKSCOPE_PE && etype > nextbest_etype) nextbest_etype = etype;
 
@@ -1989,16 +2193,19 @@ Object  InformParser "(Inform Parser)"
     !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    ! If the player was the actor (eg, in "take dfghh") the error must be printed,
-    ! and fresh input called for.  In three cases the oops word must be jiggled.
+    ! If the player was the actor (eg, in "take dfghh") the error must be
+    ! printed, and fresh input called for.  In three cases the oops word
+    ! must be jiggled.
 
-    if (ParserError(etype) ~= 0) jump ReType;
+    if (ParserError(etype)) jump ReType;
+    if (LibraryExtensions.RunWhile(ext_parsererror, false, etype)) jump ReType;
     pronoun_word = pronoun__word; pronoun_obj = pronoun__obj;
 
     if (etype == STUCK_PE) {    L__M(##Miscellany, 27); oops_from = 1; }
     if (etype == UPTO_PE) {     L__M(##Miscellany, 28);
         for (m=0 : m<32 : m++) pattern-->m = pattern2-->m;
         pcount = pcount2; PrintCommand(0); L__M(##Miscellany, 56);
+        oops_from = wn-1;
     }
     if (etype == NUMBER_PE)     L__M(##Miscellany, 29);
     if (etype == CANTSEE_PE) {  L__M(##Miscellany, 30); oops_from=saved_oops; }
@@ -2006,15 +2213,15 @@ Object  InformParser "(Inform Parser)"
     if (etype == NOTHELD_PE) {  L__M(##Miscellany, 32); oops_from=saved_oops; }
     if (etype == MULTI_PE)      L__M(##Miscellany, 33);
     if (etype == MMULTI_PE)     L__M(##Miscellany, 34);
-    if (etype == VAGUE_PE)      L__M(##Miscellany, 35);
+    if (etype == VAGUE_PE)      L__M(##Miscellany, 35, pronoun_word);
     if (etype == EXCEPT_PE)     L__M(##Miscellany, 36);
     if (etype == ANIMA_PE)      L__M(##Miscellany, 37);
     if (etype == VERB_PE)       L__M(##Miscellany, 38);
     if (etype == SCENERY_PE)    L__M(##Miscellany, 39);
     if (etype == ITGONE_PE) {
         if (pronoun_obj == NULL)
-                                L__M(##Miscellany, 35);
-        else                    L__M(##Miscellany, 40);
+                                L__M(##Miscellany, 35, pronoun_word);
+        else                    L__M(##Miscellany, 40, pronoun_word, pronoun_obj);
     }
     if (etype == JUNKAFTER_PE)  L__M(##Miscellany, 41);
     if (etype == TOOFEW_PE)     L__M(##Miscellany, 42, multi_had);
@@ -2028,13 +2235,20 @@ Object  InformParser "(Inform Parser)"
             else results-->0 = 0;
             }
         if (results-->0 ~= ##Remove) {
-            if (multi_wanted==100)  L__M(##Miscellany, 43);
-            else                    L__M(##Miscellany, 44);
+            if (multi_wanted == 100)    L__M(##Miscellany, 43);
+            else {
+                #Ifdef NO_TAKE_ALL;
+                if (take_all_rule == 2) L__M(##Miscellany, 59);
+                else                    L__M(##Miscellany, 44);
+                #Ifnot;
+                L__M(##Miscellany, 44);
+                #Endif; ! NO_TAKE_ALL
+            }
         }
     }
     if (etype == ASKSCOPE_PE) {
         scope_stage = 3;
-        if (indirect(scope_error) == -1) {
+        if (scope_error() == -1) {
             best_etype = nextbest_etype;
             jump GiveError;
         }
@@ -2068,7 +2282,7 @@ Object  InformParser "(Inform Parser)"
     if (wn > num_words) rtrue;
 
     i = NextWord();
-    if (i == THEN1__WD or THEN2__WD or THEN3__WD or comma_word) {
+    if (l == THEN1__WD or THEN2__WD or THEN3__WD or comma_word or AND1__WD) {
         if (wn > num_words) {
            held_back_mode = false;
            return;
@@ -2132,9 +2346,11 @@ Constant UNLIT_BIT  =  32;
     indef_nspec_at = 0;
 ];
 
-[ Descriptors  o x flag cto type n;
+[ Descriptors  allow_multiple o x flag cto type n m;
     ResetDescriptors();
     if (wn > num_words) return 0;
+
+    m = wn;
 
     for (flag=true : flag :) {
         o = NextWordStopped(); flag = false;
@@ -2171,7 +2387,7 @@ Constant UNLIT_BIT  =  32;
             if (take_all_rule == 1) take_all_rule = 2;
             indef_type = indef_type | PLURAL_BIT;
         }
-        if (allow_plurals) {
+        if (allow_plurals && allow_multiple) {
             n = TryNumber(wn-1);
             if (n == 1) { indef_mode = 1; flag = 1; }
             if (n > 1) {
@@ -2185,6 +2401,8 @@ Constant UNLIT_BIT  =  32;
             wn--;  ! Skip 'of' after these
     }
     wn--;
+    num_desc = wn - m;
+    if ((indef_wanted > 0) && (allow_multiple)) return MULTI_PE;
     return 0;
 ];
 
@@ -2193,6 +2411,7 @@ Constant UNLIT_BIT  =  32;
 ! ----------------------------------------------------------------------------
 
 [ CreatureTest obj;
+    if (actor ~= player) rtrue;
     if (obj has animate) rtrue;
     if (obj hasnt talkable) rfalse;
     if (action_to_be == ##Ask or ##Answer or ##Tell or ##AskFor) rtrue;
@@ -2347,7 +2566,7 @@ Constant UNLIT_BIT  =  32;
         return -1;
 
       GPR_TT:
-        l = indirect(given_tdata);
+        l = given_tdata();
         #Ifdef DEBUG;
         if (parser_trace >= 3) print "  [Outside parsing routine returned ", l, "]^";
         #Endif; ! DEBUG
@@ -2356,7 +2575,7 @@ Constant UNLIT_BIT  =  32;
       SCOPE_TT:
         scope_token = given_tdata;
         scope_stage = 1;
-        l = indirect(scope_token);
+        l = scope_token();
         #Ifdef DEBUG;
         if (parser_trace >= 3) print "  [Scope routine returned multiple-flag of ", l, "]^";
         #Endif; ! DEBUG
@@ -2437,7 +2656,8 @@ Constant UNLIT_BIT  =  32;
 
     if (o == ME1__WD or ME2__WD or ME3__WD) { pronoun_word = o; pronoun_obj = player; }
 
-    allow_plurals = true; desc_wn = wn;
+    allow_plurals = true;
+    desc_wn = wn;
 
   .TryAgain;
 
@@ -2464,14 +2684,21 @@ Constant UNLIT_BIT  =  32;
     ! In either case below we use NounDomain, giving it the token number as
     ! context, and two places to look: among the actor's possessions, and in the
     ! present location.  (Note that the order depends on which is likeliest.)
-
     if (token ~= HELD_TOKEN) {
         i = multiple_object-->0;
         #Ifdef DEBUG;
         if (parser_trace >= 3) print "  [Calling NounDomain on location and actor]^";
         #Endif; ! DEBUG
         l = NounDomain(actors_location, actor, token);
+
         if (l == REPARSE_CODE) return l;                  ! Reparse after Q&A
+        if (l ~= nothing && l notin actor && token == MULTIHELD_TOKEN or MULTIEXCEPT_TOKEN) {
+	    if (ImplicitTake(l)) {
+		etype = NOTHELD_PE;
+		jump FailToken;
+	    }
+	}
+
         if (indef_wanted == 100 && l == 0 && number_matched == 0)
             l = 1;  ! ReviseMulti if TAKE ALL FROM empty container
 
@@ -2481,12 +2708,13 @@ Constant UNLIT_BIT  =  32;
         }
         if (l == 0) {
             if (indef_possambig) {
+                saved_ml = match_length;
                 ResetDescriptors();
                 wn = desc_wn;
                 jump TryAgain2;
             }
-            if (etype == MULTI_PE or TOOFEW_PE && multiflag) etype = STUCK_PE;
-            etype=CantSee();
+            if (etype ~=TOOFEW_PE && (multiflag || etype ~= MULTI_PE))
+                etype = CantSee();
             jump FailToken;
         } ! Choose best error
 
@@ -2546,13 +2774,10 @@ Constant UNLIT_BIT  =  32;
                 #Endif; ! DEBUG
             }
         }
-    }
 
-    else {
-
+    } else {
     ! Case 2: token is "held" (which fortunately can't take multiple objects)
     ! and may generate an implicit take
-
         l = NounDomain(actor,actors_location,token);       ! Same as above...
         if (l == REPARSE_CODE) return GPR_REPARSE;
         if (l == 0) {
@@ -2579,6 +2804,7 @@ Constant UNLIT_BIT  =  32;
         ! Anyway for now all we do is record the number of the object to take.
 
         o = parent(l);
+
         if (o ~= actor) {
             if (notheld_mode == 1) {
                 saved_oops = oops_from;
@@ -2617,6 +2843,12 @@ Constant UNLIT_BIT  =  32;
         if (parser_trace >= 3) print "  [Read connective '", (address) o, "']^";
         #Endif; ! DEBUG
 
+        k = NextWord();
+        if (k ~= AND1__WD) wn--;  ! allow Serial commas in input
+        if (k > 0 && (k->#dict_par1) & (DICT_NOUN+DICT_VERB) == DICT_VERB) {
+            wn--; ! player meant 'THEN'
+            jump PassToken;
+        }
         if (~~token_allows_multiple) {
             if (multiflag) jump PassToken; ! give UPTO_PE error
             etype=MULTI_PE;
@@ -2707,7 +2939,7 @@ Constant UNLIT_BIT  =  32;
 ! ----------------------------------------------------------------------------
 
 [ NounDomain domain1 domain2 context    first_word i j k l
-                                        answer_words marker;
+                                        answer_words;
     #Ifdef DEBUG;
     if (parser_trace >= 4) {
         print "   [NounDomain called at word ", wn, "^";
@@ -2775,6 +3007,8 @@ Constant UNLIT_BIT  =  32;
 
     number_of_classes = 0;
 
+    if (match_length == 0 && indef_mode && indef_wanted ~= 100)
+        number_matched = 0;  ! ask question for 'take three'
     if (number_matched == 1) i = match_list-->0;
     if (number_matched > 1) {
         i = Adjudicate(context);
@@ -2806,12 +3040,145 @@ Constant UNLIT_BIT  =  32;
     ! from - instead we go and ask a more suitable question...
 
     if (match_from > num_words) jump Incomplete;
+    return AskPlayer(context);
 
+    ! Now we come to the question asked when the input has run out
+    ! and can't easily be guessed (eg, the player typed "take" and there
+    ! were plenty of things which might have been meant).
+
+  .Incomplete;
+
+    if (best_etype == NOTHING_PE && pattern-->1 == 0) rfalse; ! for DROP when empty-handed
+    if (context == CREATURE_TOKEN) L__M(##Miscellany, 48);
+    else                           L__M(##Miscellany, 49);
+
+    #Ifdef TARGET_ZCODE;
+    for (i=2 : i<INPUT_BUFFER_LEN : i++) buffer2->i = ' ';
+    #Endif; ! TARGET_ZCODE
+    answer_words = Keyboard(buffer2, parse2);
+
+    first_word = WordValue(1, parse2);
+    #Ifdef LanguageIsVerb;
+    if (first_word == 0) {
+        j = wn; first_word = LanguageIsVerb(buffer2, parse2, 1); wn = j;
+    }
+    #Endif; ! LanguageIsVerb
+
+    ! Once again, if the reply looks like a command, give it to the
+    ! parser to get on with and forget about the question...
+
+    ! Once again, if the reply looks like a command
+    ! (that is, VERB ... or XXX,VERB ...), give it to the parser to get
+    ! on with and forget about the question...
+
+    if (first_word) {
+        if ((first_word->#dict_par1) & DICT_VERB) {
+            CopyBuffer(buffer, buffer2);
+            return REPARSE_CODE;
+        }
+        if (NumberWords(parse2) > 2) {
+            j = WordValue(2, parse2);
+            k = WordValue(3, parse2);
+            if (j == ',//' && k && (k->#dict_par1) & DICT_VERB) {
+                CopyBuffer(buffer, buffer2);
+                return REPARSE_CODE;
+            }
+        }
+    }
+
+    ! ...but if we have a genuine answer, then:
+    !
+    ! (1) we must glue in text suitable for anything that's been inferred.
+
+    if (inferfrom ~= 0) {
+        for (j=inferfrom : j<pcount : j++) {
+            if (pattern-->j == PATTERN_NULL) continue;
+            i = WORDSIZE + GetKeyBufLength();
+            SetKeyBufLength(i-WORDSIZE + 1);
+            buffer->(i++) = ' ';
+
+            #Ifdef DEBUG;
+            if (parser_trace >= 5) print "[Gluing in inference with pattern code ", pattern-->j, "]^";
+            #Endif; ! DEBUG
+
+            ! Conveniently, parse2-->1 is the first word in both ZCODE and GLULX.
+
+            parse2-->1 = 0;
+
+            ! An inferred object.  Best we can do is glue in a pronoun.
+            ! (This is imperfect, but it's very seldom needed anyway.)
+
+            if (pattern-->j >= 2 && pattern-->j < REPARSE_CODE) {
+                ! was the inference made from some noun words?
+                ! In which case, we can infer again.
+                if ((WordValue(NumberWords())->#dict_par1) & DICT_NOUN) continue;
+                PronounNotice(pattern-->j);
+                for (k=1 : k<=LanguagePronouns-->0 : k=k+3)
+                    if (pattern-->j == LanguagePronouns-->(k+2)) {
+                        parse2-->1 = LanguagePronouns-->k;
+                        #Ifdef DEBUG;
+                        if (parser_trace >= 5) print "[Using pronoun '", (address) parse2-->1, "']^";
+                        #Endif; ! DEBUG
+                        break;
+                    }
+            }
+            else {
+                ! An inferred preposition.
+                parse2-->1 = No__Dword(pattern-->j - REPARSE_CODE);
+                #Ifdef DEBUG;
+                if (parser_trace >= 5) print "[Using preposition '", (address) parse2-->1, "']^";
+                #Endif; ! DEBUG
+            }
+
+            ! parse2-->1 now holds the dictionary address of the word to glue in.
+
+            if (parse2-->1 ~= 0) {
+                k = buffer + i;
+                #Ifdef TARGET_ZCODE;
+                @output_stream 3 k;
+                print (address) parse2-->1;
+                @output_stream -3;
+                k = k-->0;
+                for (l=i : l<i+k : l++) buffer->l = buffer->(l+2);
+                #Ifnot; ! TARGET_GLULX
+                k = PrintAnyToArray(buffer+i, INPUT_BUFFER_LEN-i, parse2-->1);
+                l=l; ! suppress compiler warning
+                #Endif; ! TARGET_
+                i = i + k; SetKeyBufLength(i-WORDSIZE);
+            }
+        }
+    }
+
+    ! (2) we must glue the newly-typed text onto the end.
+
+    i = WORDSIZE + GetKeyBufLength();
+    buffer->(i++) = ' ';
+    SetKeyBufLength(GetKeyBufLength()+1);
+    for (j=0 : j<GetKeyBufLength(buffer2) : i++,j++) {
+        buffer->i = buffer2->(j+WORDSIZE);
+        SetKeyBufLength(GetKeyBufLength()+1);
+        if (i-WORDSIZE == INPUT_BUFFER_LEN-1) break;
+    }
+
+    ! (3) we fill up the buffer with spaces, which is unnecessary, but may
+    !     help incorrectly-written interpreters to cope.
+
+    #Ifdef TARGET_ZCODE;
+    for (: i<INPUT_BUFFER_LEN : i++) buffer->i = ' ';
+    #Endif; ! TARGET_ZCODE
+
+    return REPARSE_CODE;
+
+]; ! end of NounDomain
+
+
+[ AskPlayer context  i j k l first_word answer_words marker;
     ! Now we print up the question, using the equivalence classes as worked
     ! out by Adjudicate() so as not to repeat ourselves on plural objects...
 
-    if (context==CREATURE_TOKEN) L__M(##Miscellany, 45);
-    else                         L__M(##Miscellany, 46);
+    asking_player = true;
+    if (context == CREATURE_TOKEN) L__M(##Miscellany, 45);
+    else                           L__M(##Miscellany, 46);
 
     j = number_of_classes; marker = 0;
     for (i=1 : i<=number_of_classes : i++) {
@@ -2821,7 +3188,7 @@ Constant UNLIT_BIT  =  32;
         if (match_classes-->marker > 0) print (the) k; else print (a) k;
 
         if (i < j-1)  print (string) COMMA__TX;
-        if (i == j-1) print (string) OR__TX;
+        if (i == j-1) print (SerialComma) j, (string) OR__TX;
     }
     L__M(##Miscellany, 57);
 
@@ -2829,12 +3196,12 @@ Constant UNLIT_BIT  =  32;
 
   .WhichOne;
     #Ifdef TARGET_ZCODE;
-    for (i=2 : i<INPUT_BUFFER_LEN : i++) buffer2->i = ' ';
+    for (i=WORDSIZE : i<INPUT_BUFFER_LEN : i++) buffer2->i = ' ';
     #Endif; ! TARGET_ZCODE
-    answer_words=Keyboard(buffer2, parse2);
+    answer_words = Keyboard(buffer2, parse2);
 
-    ! Conveniently, parse2-->1 is the first word in both ZCODE and GLULX.
-    first_word = (parse2-->1);
+    first_word = WordValue(1, parse2);
+    asking_player = false;
 
     ! Take care of "all", because that does something too clever here to do
     ! later on:
@@ -2865,11 +3232,18 @@ Constant UNLIT_BIT  =  32;
         j = wn; first_word = LanguageIsVerb(buffer2, parse2, 1); wn = j;
     }
     #Endif; ! LanguageIsVerb
-    if (first_word ~= 0) {
-        j = first_word->#dict_par1;
-        if ((0 ~= j&1) && ~~LanguageVerbMayBeName(first_word)) {
+    if (first_word) {
+        if (((first_word->#dict_par1) & DICT_VERB) && ~~LanguageVerbMayBeName(first_word)) {
             CopyBuffer(buffer, buffer2);
             return REPARSE_CODE;
+        }
+        if (NumberWords(parse2) > 2) {
+            j = WordValue(2, parse2);
+            k = WordValue(3, parse2);
+            if (j == ',//' && k && (k->#dict_par1) & DICT_VERB) {
+                CopyBuffer(buffer, buffer2);
+                return REPARSE_CODE;
+            }
         }
     }
 
@@ -2881,152 +3255,19 @@ Constant UNLIT_BIT  =  32;
     ! becomes "take music red button".  The parser will thus have three
     ! words to work from next time, not two.)
 
-    #Ifdef TARGET_ZCODE;
-    k = WordAddress(match_from) - buffer; l=buffer2->1+1;
-    for (j=buffer + buffer->0 - 1 : j>=buffer+k+l : j--) j->0 = 0->(j-l);
-    for (i=0 : i<l : i++) buffer->(k+i) = buffer2->(2+i);
-    buffer->(k+l-1) = ' ';
-    buffer->1 = buffer->1 + l;
-    if (buffer->1 >= (buffer->0 - 1)) buffer->1 = buffer->0;
-    #Ifnot; ! TARGET_GLULX
     k = WordAddress(match_from) - buffer;
-    l = (buffer2-->0) + 1;
-    for (j=buffer+INPUT_BUFFER_LEN-1 : j>=buffer+k+l : j--) j->0 = j->(-l);
+    l = GetKeyBufLength(buffer2) +1;
+    for (j=buffer + INPUT_BUFFER_LEN - 1 : j>=buffer+k+l : j--) j->0 = j->(-l);
     for (i=0 : i<l : i++) buffer->(k+i) = buffer2->(WORDSIZE+i);
     buffer->(k+l-1) = ' ';
-    buffer-->0 = buffer-->0 + l;
-    if (buffer-->0 > (INPUT_BUFFER_LEN-WORDSIZE)) buffer-->0 = (INPUT_BUFFER_LEN-WORDSIZE);
-    #Endif; ! TARGET_
+    SetKeyBufLength(GetKeyBufLength() + l);
 
     ! Having reconstructed the input, we warn the parser accordingly
     ! and get out.
 
     return REPARSE_CODE;
+];
 
-    ! Now we come to the question asked when the input has run out
-    ! and can't easily be guessed (eg, the player typed "take" and there
-    ! were plenty of things which might have been meant).
-
-  .Incomplete;
-
-    if (context == CREATURE_TOKEN) L__M(##Miscellany, 48);
-    else                           L__M(##Miscellany, 49);
-
-    #Ifdef TARGET_ZCODE;
-    for (i=2 : i<INPUT_BUFFER_LEN : i++) buffer2->i=' ';
-    #Endif; ! TARGET_ZCODE
-    answer_words = Keyboard(buffer2, parse2);
-
-    first_word=(parse2-->1);
-    #Ifdef LanguageIsVerb;
-    if (first_word==0) {
-        j = wn; first_word=LanguageIsVerb(buffer2, parse2, 1); wn = j;
-    }
-    #Endif; ! LanguageIsVerb
-
-    ! Once again, if the reply looks like a command, give it to the
-    ! parser to get on with and forget about the question...
-
-    if (first_word ~= 0) {
-        j = first_word->#dict_par1;
-        if (0 ~= j&1) {
-            CopyBuffer(buffer, buffer2);
-            return REPARSE_CODE;
-        }
-    }
-
-    ! ...but if we have a genuine answer, then:
-    !
-    ! (1) we must glue in text suitable for anything that's been inferred.
-
-    if (inferfrom ~= 0) {
-        for (j=inferfrom : j<pcount : j++) {
-            if (pattern-->j == PATTERN_NULL) continue;
-            #Ifdef TARGET_ZCODE;
-            i = 2+buffer->1; (buffer->1)++; buffer->(i++) = ' ';
-            #Ifnot; ! TARGET_GLULX
-            i = WORDSIZE + buffer-->0;
-            (buffer-->0)++; buffer->(i++) = ' ';
-            #Endif; ! TARGET_
-
-            #Ifdef DEBUG;
-            if (parser_trace >= 5) print "[Gluing in inference with pattern code ", pattern-->j, "]^";
-            #Endif; ! DEBUG
-
-            ! Conveniently, parse2-->1 is the first word in both ZCODE and GLULX.
-
-            parse2-->1 = 0;
-
-            ! An inferred object.  Best we can do is glue in a pronoun.
-            ! (This is imperfect, but it's very seldom needed anyway.)
-
-            if (pattern-->j >= 2 && pattern-->j < REPARSE_CODE) {
-                PronounNotice(pattern-->j);
-                for (k=1 : k<=LanguagePronouns-->0 : k=k+3)
-                    if (pattern-->j == LanguagePronouns-->(k+2)) {
-                        parse2-->1 = LanguagePronouns-->k;
-                        #Ifdef DEBUG;
-                        if (parser_trace >= 5) print "[Using pronoun '", (address) parse2-->1, "']^";
-                        #Endif; ! DEBUG
-                        break;
-                    }
-            }
-            else {
-                ! An inferred preposition.
-                parse2-->1 = No__Dword(pattern-->j - REPARSE_CODE);
-                #Ifdef DEBUG;
-                if (parser_trace >= 5) print "[Using preposition '", (address) parse2-->1, "']^";
-                #Endif; ! DEBUG
-            }
-
-            ! parse2-->1 now holds the dictionary address of the word to glue in.
-
-            if (parse2-->1 ~= 0) {
-                k = buffer + i;
-                #Ifdef TARGET_ZCODE;
-                @output_stream 3 k;
-                 print (address) parse2-->1;
-                @output_stream -3;
-                k = k-->0;
-                for (l=i : l<i+k : l++) buffer->l = buffer->(l+2);
-                i = i + k; buffer->1 = i-2;
-                #Ifnot; ! TARGET_GLULX
-                k = PrintAnyToArray(buffer+i, INPUT_BUFFER_LEN-i, parse2-->1);
-                i = i + k; buffer-->0 = i - WORDSIZE;
-                #Endif; ! TARGET_
-            }
-        }
-    }
-
-    ! (2) we must glue the newly-typed text onto the end.
-
-    #Ifdef TARGET_ZCODE;
-    i = 2+buffer->1; (buffer->1)++; buffer->(i++) = ' ';
-    for (j=0 : j<buffer2->1 : i++,j++) {
-        buffer->i = buffer2->(j+2);
-        (buffer->1)++;
-        if (buffer->1 == INPUT_BUFFER_LEN) break;
-    }
-    #Ifnot; ! TARGET_GLULX
-    i = WORDSIZE + buffer-->0;
-    (buffer-->0)++; buffer->(i++) = ' ';
-    for (j=0 : j<buffer2-->0 : i++,j++) {
-        buffer->i = buffer2->(j+WORDSIZE);
-        (buffer-->0)++;
-        if (buffer-->0 == INPUT_BUFFER_LEN) break;
-    }
-    #Endif; ! TARGET_
-
-    ! (3) we fill up the buffer with spaces, which is unnecessary, but may
-    !     help incorrectly-written interpreters to cope.
-
-    #Ifdef TARGET_ZCODE;
-    for (: i<INPUT_BUFFER_LEN : i++) buffer->i = ' ';
-    #Endif; ! TARGET_ZCODE
-
-    return REPARSE_CODE;
-
-]; ! end of NounDomain
 
 ! ----------------------------------------------------------------------------
 !  The Adjudicate routine tries to see if there is an obvious choice, when
@@ -3056,16 +3297,16 @@ Constant UNLIT_BIT  =  32;
 !  Returns -1 if an error occurred
 ! ----------------------------------------------------------------------------
 
-Constant SCORE__CHOOSEOBJ = 1000;
-Constant SCORE__IFGOOD = 500;
+Constant SCORE__CHOOSEOBJ   = 1000;
+Constant SCORE__IFGOOD      = 500;
 Constant SCORE__UNCONCEALED = 100;
-Constant SCORE__BESTLOC = 60;
+Constant SCORE__BESTLOC     = 60;
 Constant SCORE__NEXTBESTLOC = 40;
-Constant SCORE__NOTCOMPASS = 20;
-Constant SCORE__NOTSCENERY = 10;
-Constant SCORE__NOTACTOR = 5;
-Constant SCORE__GNA = 1;
-Constant SCORE__DIVISOR = 20;
+Constant SCORE__NOTCOMPASS  = 20;
+Constant SCORE__NOTSCENERY  = 10;
+Constant SCORE__NOTACTOR    = 5;
+Constant SCORE__GNA         = 1;
+Constant SCORE__DIVISOR     = 20;
 
 [ Adjudicate context i j k good_flag good_ones last n flag offset sovert;
     #Ifdef DEBUG;
@@ -3139,18 +3380,6 @@ Constant SCORE__DIVISOR = 20;
     ScoreMatchL(context);
     if (number_matched == 0) return -1;
 
-    if (indef_mode == 0) {
-        !  Is there now a single highest-scoring object?
-        i = SingleBestGuess();
-        if (i >= 0) {
-
-            #Ifdef DEBUG;
-            if (parser_trace >= 4) print "   Single best-scoring object returned.]^";
-            #Endif; ! DEBUG
-            return i;
-        }
-    }
-
     if (indef_mode == 1 && indef_type & PLURAL_BIT ~= 0) {
         if (context ~= MULTI_TOKEN or MULTIHELD_TOKEN or MULTIEXCEPT_TOKEN
                      or MULTIINSIDE_TOKEN) {
@@ -3159,8 +3388,8 @@ Constant SCORE__DIVISOR = 20;
         }
         i = 0; offset = multiple_object-->0; sovert = -1;
         for (j=BestGuess() : j~=-1 && i<indef_wanted && i+offset<63 : j=BestGuess()) {
-            flag = 0;
-            if (j hasnt concealed && j hasnt worn) flag = 1;
+            flag = 1;
+            if (j has concealed && j has worn) flag = 0;
             if (sovert == -1) sovert = bestguess_score/SCORE__DIVISOR;
             else {
                 if (indef_wanted == 100 && bestguess_score/SCORE__DIVISOR < sovert)
@@ -3168,13 +3397,23 @@ Constant SCORE__DIVISOR = 20;
             }
             if (context == MULTIHELD_TOKEN or MULTIEXCEPT_TOKEN && parent(j) ~= actor)
                 flag = 0;
+            #Ifdef TRADITIONAL_TAKE_ALL;
             if (action_to_be == ##Take or ##Remove && parent(j) == actor)
                 flag = 0;
-            k = ChooseObjects(j, flag);
-            if (k == 1)
-                flag = 1;
-            else {
-                if (k == 2) flag = 0;
+            #Ifnot;
+            if (action_to_be == ##Take or ##Remove &&
+               (j has animate or scenery or static || parent(j) == actor))
+                flag = 0;
+            #Endif; ! TRADITIONAL_TAKE_ALL
+            #Ifdef NO_TAKE_ALL;
+            if (take_all_rule == 2 && match_length == 0) flag = 0;
+            #Endif; ! NO_TAKE_ALL
+            n = ChooseObjects(j, flag);
+            if (n == 0) n = LibraryExtensions.RunWhile(ext_chooseobjects, 0, j, flag);
+            switch (n) {
+              2: flag = 0;  ! forcing rejection
+              1: flag = 1;  ! forcing acceptance
+             !0:            ! going with parser's decision
             }
             if (flag == 1) {
                 i++; multiple_object-->(i+offset) = j;
@@ -3227,6 +3466,19 @@ Constant SCORE__DIVISOR = 20;
                   match_classes-->i, "^";
     }
     #Endif; ! DEBUG
+    if (n == 1) dont_infer = true;
+
+    if (indef_mode == 0) {
+        !  Is there now a single highest-scoring object?
+        i = SingleBestGuess();
+        if (i >= 0) {
+
+            #Ifdef DEBUG;
+            if (parser_trace >= 4) print "   Single best-scoring object returned.]^";
+            #Endif; ! DEBUG
+            return i;
+        }
+    }
 
     if (indef_mode == 0) {
         if (n > 1) {
@@ -3261,7 +3513,6 @@ Constant SCORE__DIVISOR = 20;
     !  most recently acquired, or if the player has none of them, then
     !  the one most recently put where it is.
 
-    if (n == 1) dont_infer = true;
     return BestGuess();
 
 ]; ! Adjudicate
@@ -3335,7 +3586,9 @@ Constant SCORE__DIVISOR = 20;
       indef_type, ", satisfying ", threshold, " requirements:^";
     #Endif; ! DEBUG
 
-    a_s = SCORE__NEXTBESTLOC; l_s = SCORE__BESTLOC;
+    if (action_to_be ~= ##Take)
+        a_s = SCORE__NEXTBESTLOC;
+    l_s = SCORE__BESTLOC;
     if (context == HELD_TOKEN or MULTIHELD_TOKEN or MULTIEXCEPT_TOKEN) {
         a_s = SCORE__BESTLOC; l_s = SCORE__NEXTBESTLOC;
     }
@@ -3365,10 +3618,23 @@ Constant SCORE__DIVISOR = 20;
             if (its_owner == actor) its_score = its_score + a_s;
             else
                 if (its_owner == actors_location) its_score = its_score + l_s;
-                else
+                else {
+                    #Ifdef TRADITIONAL_TAKE_ALL;
                     if (its_owner ~= compass) its_score = its_score + SCORE__NOTCOMPASS;
-
-            its_score = its_score + SCORE__CHOOSEOBJ * ChooseObjects(obj, 2);
+                    #Ifnot;
+                    if (its_owner ~= compass)
+                        if (take_all_rule && its_owner &&
+                            its_owner has static or scenery &&
+                              (its_owner has supporter ||
+                              (its_owner has container && its_owner has open)))
+                            its_score = its_score + l_s;
+                    else
+                            its_score = its_score + SCORE__NOTCOMPASS;
+                    #Endif; ! TRADITIONAL_TAKE_ALL
+                }
+            j = ChooseObjects(obj, 2);
+            if (j == 0) j = LibraryExtensions.RunAll(ext_chooseobjects, obj, 2);
+            its_score = its_score + SCORE__CHOOSEOBJ * j;
 
             if (obj hasnt scenery) its_score = its_score + SCORE__NOTSCENERY;
             if (obj ~= actor) its_score = its_score + SCORE__NOTACTOR;
@@ -3390,7 +3656,7 @@ Constant SCORE__DIVISOR = 20;
     for (i=0 : i<number_matched : i++) {
         while (match_list-->i == -1) {
             if (i == number_matched-1) { number_matched--; break; }
-            for (j=i : j<number_matched : j++) {
+            for (j=i : j<number_matched-1 : j++) {
                 match_list-->j = match_list-->(j+1);
                 match_scores-->j = match_scores-->(j+1);
             }
@@ -3518,10 +3784,14 @@ Constant SCORE__DIVISOR = 20;
 ! ----------------------------------------------------------------------------
 
 [ PrintCommand from i k spacing_flag;
+    #Ifdef LanguageCommand;
+    LanguageCommand(from);
+    i = k = spacing_flag = 0;   ! suppress warning
+    #Ifnot;
     if (from == 0) {
         i = verb_word;
-        if (LanguageVerb(i) == 0)
-            if (PrintVerb(i) == 0) print (address) i;
+        if (LanguageVerb(i) == 0 && PrintVerb(i) == false && LibraryExtensions.RunWhile(ext_printverb, false, i) == 0)
+            print (address) i;
         from++; spacing_flag = true;
     }
 
@@ -3529,7 +3799,7 @@ Constant SCORE__DIVISOR = 20;
         i = pattern-->k;
         if (i == PATTERN_NULL) continue;
         if (spacing_flag) print (char) ' ';
-        if (i ==0 ) { print (string) THOSET__TX; jump TokenPrinted; }
+        if (i == 0) { print (string) THOSET__TX; jump TokenPrinted; }
         if (i == 1) { print (string) THAT__TX;   jump TokenPrinted; }
         if (i >= REPARSE_CODE)
             print (address) No__Dword(i-REPARSE_CODE);
@@ -3541,6 +3811,7 @@ Constant SCORE__DIVISOR = 20;
       .TokenPrinted;
         spacing_flag = true;
     }
+    #Endif; ! LanguageCommand
 ];
 
 ! ----------------------------------------------------------------------------
@@ -3558,8 +3829,6 @@ Constant SCORE__DIVISOR = 20;
 ! ----------------------------------------------------------------------------
 
 [ CantSee  i w e;
-    saved_oops=oops_from;
-
     if (scope_token ~= 0) {
         scope_error = scope_token;
         return ASKSCOPE_PE;
@@ -3579,8 +3848,14 @@ Constant SCORE__DIVISOR = 20;
         Descriptors();  ! skip past THE etc
         if (i has visited && Refers(i,wn) == 1) e = SCENERY_PE;
     }
+    saved_oops = match_from + match_length;
+
+    if (saved_ml)
+        saved_oops = num_desc + match_from + saved_ml;
+    else
+        saved_oops = num_desc + match_from + match_length;
+
     wn++;
-    if (etype > e) return etype;
     return e;
 ];
 
@@ -3651,7 +3926,7 @@ Constant SCORE__DIVISOR = 20;
         rfalse;
     }
     noun = obj;
-    return indirect(token_filter);
+    return token_filter();
 ];
 
 ! ----------------------------------------------------------------------------
@@ -3685,7 +3960,7 @@ Constant SCORE__DIVISOR = 20;
 !  but does not look at anything the player has typed.
 ! ----------------------------------------------------------------------------
 
-[ SearchScope domain1 domain2 context i;
+[ SearchScope domain1 domain2 context i is;
     i = 0;
     !  Everything is in scope to the debugging commands
 
@@ -3710,13 +3985,8 @@ Constant SCORE__DIVISOR = 20;
 
     if (scope_token ~= 0) {
         scope_stage = 2;
-        if (indirect(scope_token) ~= 0) rtrue;
+        if (scope_token()) rtrue;
     }
-
-    ! Next, call any user-supplied routine adding things to the scope,
-    ! which may circumvent the usual routines altogether if they return true:
-
-    if (actor == domain1 or domain2 && InScope(actor) ~= 0) rtrue;
 
     ! Pick up everything in the location except the actor's possessions;
     ! then go through those.  (This ensures the actor's possessions are in
@@ -3727,6 +3997,16 @@ Constant SCORE__DIVISOR = 20;
            ScopeWithin(advance_warning, 0, context);
     }
     else {
+        ! Next, call any user-supplied routine adding things to the scope,
+        ! which may circumvent the usual routines altogether
+        ! if they return true:
+
+        if (actor == domain1 or domain2) {
+            is = InScope(actor);
+            if (is == false) is = LibraryExtensions.RunWhile(ext_inscope, false, actor);
+            if (is) rtrue;
+        }
+
         if (domain1 ~= 0 && domain1 has supporter or container)
             ScopeWithin_O(domain1, domain1, context);
         ScopeWithin(domain1, domain2, context);
@@ -3751,8 +4031,7 @@ Constant SCORE__DIVISOR = 20;
 ! ----------------------------------------------------------------------------
 
 [ IsSeeThrough o;
-    if (o has supporter ||
-       (o has transparent) ||
+    if (o has supporter or transparent ||
        (o has container && o has open))
         rtrue;
     rfalse;
@@ -3797,7 +4076,7 @@ Constant SCORE__DIVISOR = 20;
         #Endif; ! DEBUG
         if (parser_one == 0) parser_one = RunRoutines(thing, react_after);
       EACH_TURN_REASON:
-        if (thing.each_turn == 0 or NULL) return;
+        if (thing.each_turn == 0) return;
         #Ifdef DEBUG;
         if (parser_trace >= 2)
               print "[Considering each_turn for ", (the) thing, "]^";
@@ -3806,7 +4085,7 @@ Constant SCORE__DIVISOR = 20;
       TESTSCOPE_REASON:
         if (thing == parser_one) parser_two = 1;
       LOOPOVERSCOPE_REASON:
-        indirect(parser_one, thing);
+        parser_one(thing);
         parser_one=p1;
     }
     scope_reason = s;
@@ -3961,7 +4240,7 @@ Constant SCORE__DIVISOR = 20;
     if (quality < match_length) rtrue;
     if (quality > match_length) { match_length = quality; number_matched = 0; }
     else {
-        if (2*number_matched >= MATCH_LIST_SIZE) rtrue;
+        if (number_matched >= MATCH_LIST_SIZE) rtrue;
         for (i=0 : i<number_matched : i++)
             if (match_list-->i == obj) rtrue;
     }
@@ -3985,12 +4264,12 @@ Constant SCORE__DIVISOR = 20;
 
     dict_flags_of_noun = 0;
 
-!  If input has run out then always match, with only quality 0 (this saves
-!  time).
+    !  If input has run out then always match, with only quality 0 (this saves
+    !  time).
 
     if (wn > num_words) {
         if (indef_mode ~= 0)
-            dict_flags_of_noun = $$01110000;  ! Reject "plural" bit
+            dict_flags_of_noun = DICT_X654;  ! Reject "plural" bit
         MakeMatch(obj,0);
         #Ifdef DEBUG;
         if (parser_trace >= 5) print "    Matched (0)^";
@@ -3998,8 +4277,8 @@ Constant SCORE__DIVISOR = 20;
         return 1;
     }
 
-!  Ask the object to parse itself if necessary, sitting up and taking notice
-!  if it says the plural was used:
+    !  Ask the object to parse itself if necessary, sitting up and taking notice
+    !  if it says the plural was used:
 
     if (obj.parse_name~=0) {
         parser_action = NULL; j=wn;
@@ -4010,9 +4289,9 @@ Constant SCORE__DIVISOR = 20;
           .MMbyPN;
 
             if (parser_action == ##PluralFound)
-                dict_flags_of_noun = dict_flags_of_noun | 4;
+                dict_flags_of_noun = dict_flags_of_noun | DICT_PLUR;
 
-            if (dict_flags_of_noun & 4) {
+            if (dict_flags_of_noun & DICT_PLUR) {
                 if (~~allow_plurals) k = 0;
                 else {
                     if (indef_mode == 0) {
@@ -4030,6 +4309,7 @@ Constant SCORE__DIVISOR = 20;
             return k;
         }
         if (k == 0) jump NoWordsMatch;
+        wn = j;
     }
 
     ! The default algorithm is simply to count up how many words pass the
@@ -4043,8 +4323,14 @@ Constant SCORE__DIVISOR = 20;
 
     if (w >= 2 && w < 128 && (LanguagePronouns-->w == obj)) { k = 1; jump MMbyPN; }
 
-    j=--wn;
+    j = --wn;
     threshold = ParseNoun(obj);
+    if (threshold == -1) {
+        LibraryExtensions.ext_number_1 = wn;    ! Set the "between calls" functionality to
+        LibraryExtensions.BetweenCalls = LibraryExtensions.RestoreWN;
+        threshold = LibraryExtensions.RunWhile(ext_parsenoun, -1, obj);
+        LibraryExtensions.BetweenCalls = 0;     ! Turn off the "between calls" functionality
+    }
     #Ifdef DEBUG;
     if (threshold >= 0 && parser_trace >= 5) print "    ParseNoun returned ", threshold, "^";
     #Endif; ! DEBUG
@@ -4062,12 +4348,12 @@ Constant SCORE__DIVISOR = 20;
 
     if (threshold < 0) {
         threshold = 1;
-        dict_flags_of_noun = (w->#dict_par1) & $$01110100;
+        dict_flags_of_noun = (w->#dict_par1) & (DICT_X654+DICT_PLUR);!$$01110100;
         w = NextWord();
         while (Refers(obj, wn-1)) {
             threshold++;
             if (w)
-               dict_flags_of_noun = dict_flags_of_noun | ((w->#dict_par1) & $$01110100);
+               dict_flags_of_noun = dict_flags_of_noun | ((w->#dict_par1) & (DICT_X654+DICT_PLUR));
             w = NextWord();
         }
     }
@@ -4092,13 +4378,14 @@ Constant SCORE__DIVISOR = 20;
 
     k = wn; wn = wnum; wd = NextWordStopped(); wn = k;
 
-    if (parser_inflection >= 256) {
-        k = indirect(parser_inflection, obj, wd);
+    if (parser_inflection_func) {
+        k = parser_inflection(obj, wd);
         if (k >= 0) return k;
         m = -k;
     }
     else
         m = parser_inflection;
+
     k = obj.&m; l = (obj.#m)/WORDSIZE-1;
     for (m=0 : m<=l : m++)
         if (wd == k-->m) rtrue;
@@ -4112,25 +4399,12 @@ Constant SCORE__DIVISOR = 20;
     rfalse;
 ];
 
-#Ifdef TARGET_ZCODE;
-
-[ DictionaryLookup b l i;
-    for (i=0 : i<l : i++) buffer2->(2+i) = b->i;
-    buffer2->1 = l;
-    Tokenise__(buffer2,parse2);
-    return parse2-->1;
-];
-
-#Ifnot; ! TARGET_GLULX
-
 [ DictionaryLookup b l i;
     for (i=0 : i<l : i++) buffer2->(WORDSIZE+i) = b->i;
-    buffer2-->0 = l;
-    Tokenise__(buffer2,parse2);
+    SetKeyBufLength(l, buffer2);
+    Tokenise__(buffer2, parse2);
     return parse2-->1;
 ];
-
-#Endif; ! TARGET_
 
 ! ----------------------------------------------------------------------------
 !  NounWord (which takes no arguments) returns:
@@ -4153,7 +4427,7 @@ Constant SCORE__DIVISOR = 20;
     for (j=1 : j<=s : j=j+3)
         if (i == LanguagePronouns-->j)
             return j+2;
-    if ((i->#dict_par1)&128 == 0) rfalse;
+    if ((i->#dict_par1) & DICT_NOUN == 0) rfalse;
     return i;
 ];
 
@@ -4185,9 +4459,37 @@ Constant SCORE__DIVISOR = 20;
     return NextWord();
 ];
 
-[ WordAddress wordnum; return buffer + parse->(wordnum*4+1); ];
+[ WordAddress wordnum p b;  ! Absolute addr of 'wordnum' string in buffer
+    if (p==0) p=parse;
+    if (b==0) b=buffer;
+    return b + p->(wordnum*4+1);
+];
 
-[ WordLength wordnum; return parse->(wordnum*4); ];
+[ WordLength wordnum p;     ! Length of 'wordnum' string in buffer
+    if (p==0) p=parse;
+    return p->(wordnum*4);
+];
+
+[ WordValue wordnum p;      ! Dictionary value of 'wordnum' string in buffer
+    if (p==0) p=parse;
+    return p-->(wordnum*2-1);
+];
+
+[ NumberWords p;            ! Number of parsed strings in buffer
+    if (p==0) p=parse;
+    return p->1;
+];
+
+[ GetKeyBufLength b;        ! Number of typed chars in buffer
+    if (b==0) b=buffer;
+    return b->1;
+];
+
+[ SetKeyBufLength n b;      ! Update number of typed chars in buffer
+    if (b==0) b=buffer;
+    if (n > INPUT_BUFFER_LEN-WORDSIZE) n=INPUT_BUFFER_LEN-WORDSIZE;
+    b->1 = n;
+];
 
 #Ifnot; ! TARGET_GLULX
 
@@ -4208,9 +4510,37 @@ Constant SCORE__DIVISOR = 20;
     return NextWord();
 ];
 
-[ WordAddress wordnum; return buffer + parse-->(wordnum*3); ];
+[ WordAddress wordnum p b;  ! Absolute addr of 'wordnum' string in buffer
+    if (p==0) p=parse;
+    if (b==0) b=buffer;
+    return b + p-->(wordnum*3);
+];
 
-[ WordLength wordnum; return parse-->(wordnum*3-1); ];
+[ WordLength wordnum p;     ! Length of 'wordnum' string in buffer
+    if (p==0) p=parse;
+    return p-->(wordnum*3-1);
+];
+
+[ WordValue wordnum p;      ! Dictionary value of 'wordnum' string in buffer
+    if (p==0) p=parse;
+    return p-->(wordnum*3-2);
+];
+
+[ NumberWords p;            ! Number of parsed strings in buffer
+    if (p==0) p=parse;
+    return p-->0;
+];
+
+[ GetKeyBufLength b;        ! Number of typed chars in buffer
+    if (b==0) b=buffer;
+    return b-->0;
+];
+
+[ SetKeyBufLength n b;      ! Update number of typed chars in buffer
+    if (b==0) b=buffer;
+    if (n > INPUT_BUFFER_LEN-WORDSIZE) n=INPUT_BUFFER_LEN-WORDSIZE;
+    b-->0 = n;
+];
 
 #Endif; ! TARGET_
 
@@ -4238,13 +4568,11 @@ Constant SCORE__DIVISOR = 20;
     j = NumberWord(j);
     if (j >= 1) return j;
 
-    #Ifdef TARGET_ZCODE;
-    i = wordnum*4+1; j = parse->i; num = j+buffer; len = parse->(i-1);
-    #Ifnot; ! TARGET_GLULX
-    i = wordnum*3; j = parse-->i; num = j+buffer; len = parse-->(i-1);
-    #Endif; ! TARGET_
+    num = WordAddress(wordnum); len = WordLength(wordnum);
 
-    tot=ParseNumber(num, len);
+    tot = ParseNumber(num, len);
+    if (tot == 0) tot = LibraryExtensions.RunWhile(ext_parsenumber, 0, num, len);
+
     if (tot ~= 0) return tot;
 
     if (len >= 4) mul=1000;
@@ -4252,9 +4580,9 @@ Constant SCORE__DIVISOR = 20;
     if (len == 2) mul=10;
     if (len == 1) mul=1;
 
-    tot = 0; c = 0; len = len-1;
+    tot = 0; c = 0;
 
-    for (c=0 : c<=len : c++) {
+    for (c = 0 : c < len : c++) {
         digit=num->c;
         if (digit == '0') { d = 0; jump digok; }
         if (digit == '1') { d = 1; jump digok; }
@@ -4270,8 +4598,62 @@ Constant SCORE__DIVISOR = 20;
      .digok;
         tot = tot+mul*d; mul = mul/10;
     }
-    if (len > 3) tot=10000;
+    if (len > 4) tot=10000;
     return tot;
+];
+
+! ----------------------------------------------------------------------------
+!  AnyNumber is a general parsing routine which accepts binary, hexadecimal
+!  and decimal numbers up to the full Zcode/Glulx ranges.
+! ----------------------------------------------------------------------------
+
+#Ifdef TARGET_ZCODE;                ! decimal range is -32768 to 32767
+Constant MAX_DECIMAL_SIZE 5;
+Constant MAX_DECIMAL_BASE 3276;
+#Ifnot; ! TARGET_GLULX              ! decimal range is -2147483648 to 2147483647
+Constant MAX_DECIMAL_SIZE 10;
+Constant MAX_DECIMAL_BASE 214748364;
+#Endif; ! TARGET_
+
+[ AnyNumber
+    wa we sign base digit digit_count num;
+
+    wa = WordAddress(wn); we = wa + WordLength(wn);
+    sign = 1; base = 10;
+    if     (wa->0 == '-') { sign = -1; wa++; }
+    else {
+        if (wa->0 == '$') { base = 16; wa++; }
+        if (wa->0 == '$') { base = 2;  wa++; }
+    }
+    if (wa >= we) return GPR_FAIL;  ! no digits after -/$
+    while (wa->0 == '0') wa++;      ! skip leading zeros
+    for (num=0,digit_count=1 : wa<we : wa++,digit_count++) {
+        switch (wa->0) {
+          '0' to '9': digit = wa->0 - '0';
+          'A' to 'F': digit = wa->0 - 'A' + 10;
+          'a' to 'f': digit = wa->0 - 'a' + 10;
+          default:    return GPR_FAIL;
+        }
+        if (digit >= base) return GPR_FAIL;
+        digit_count++;
+        switch (base) {
+          16:     if (digit_count > 2*WORDSIZE)  return GPR_FAIL;
+          2:      if (digit_count > 8*WORDSIZE)  return GPR_FAIL;
+          10:
+            if (digit_count >  MAX_DECIMAL_SIZE) return GPR_FAIL;
+            if (digit_count == MAX_DECIMAL_SIZE) {
+                if (num >  MAX_DECIMAL_BASE)     return GPR_FAIL;
+                if (num == MAX_DECIMAL_BASE) {
+                    if (sign == 1  && digit > 7) return GPR_FAIL;
+                    if (sign == -1 && digit > 8) return GPR_FAIL;
+                }
+            }
+        }
+        num = base*num + digit;
+    }
+   parsed_number = num * sign;
+    wn++;
+    return GPR_NUMBER;
 ];
 
 ! ----------------------------------------------------------------------------
@@ -4403,7 +4785,7 @@ Constant SCORE__DIVISOR = 20;
         }
         d++;
         if (d < c-1) print (string) COMMA__TX;
-        if (d == c-1) print (string) AND__TX;
+        if (d == c-1) print (SerialComma) c, (string) AND__TX;
     }
     if (player ~= selfobj) {
         print "~", (address) ME1__WD, "~ "; L__M(##Pronouns, 2);
@@ -4418,7 +4800,7 @@ Constant SCORE__DIVISOR = 20;
         if (LanguagePronouns-->x == dword) {
             LanguagePronouns-->(x+2) = value; return;
         }
-    RunTimeError(14);
+    RunTimeError(12);
 ];
 
 [ PronounValue dword x;
@@ -4469,75 +4851,12 @@ Object  InformLibrary "(Inform Library)"
   with  play [ i j k l;
 
             #Ifdef TARGET_ZCODE;
-            standard_interpreter = HDR_TERPSTANDARD-->0;
-            transcript_mode = ((HDR_GAMEFLAGS-->0) & 1);
-            sys_statusline_flag = ( (HDR_TERPFLAGS->0) & 2 ) / 2;
+            ZZInitialise();
             #Ifnot; ! TARGET_GLULX
             GGInitialise();
             #Endif; ! TARGET_
 
-            ChangeDefault(cant_go, CANTGO__TX);
-
-            #Ifdef TARGET_ZCODE;
-            dict_start = HDR_DICTIONARY-->0;
-            dict_entry_size = dict_start->(dict_start->0 + 1);
-            dict_start = dict_start + dict_start->0 + 4;
-            dict_end = dict_start + (dict_start - 2)-->0 * dict_entry_size;
-            #Ifdef DEBUG;
-            if (dict_start > 0 && dict_end < 0 &&
-              ((-dict_start) - dict_end) % dict_entry_size == 0)
-                print "** Warning: grammar properties might not work correctly **^";
-            #Endif; ! DEBUG
-
-            buffer->0  = INPUT_BUFFER_LEN;
-            buffer2->0 = INPUT_BUFFER_LEN;
-            buffer3->0 = INPUT_BUFFER_LEN;
-            parse->0   = 15;
-            parse2->0  = 15;
-            #Endif; ! TARGET_ZCODE
-
-            real_location = thedark;
-            player = selfobj; actor = player;
-
-            #Ifdef TARGET_ZCODE;
-            top_object = #largest_object-255;
-            #Endif; ! TARGET_ZCODE
-            selfobj.capacity = MAX_CARRIED; ! ### change?
-
-            #Ifdef LanguageInitialise;
-            LanguageInitialise();
-            #Endif; ! LanguageInitialise
-
-            new_line;
-            LibraryExtensions.RunAll(ext_initialise);
-            j = Initialise();
-            last_score = score;
-            move player to location;
-
-            while (parent(location) ~= 0) location = parent(location);
-            real_location = location;
-
-            actor = player; ! resync, because player may have been changed in initialise()
-            actors_location = location;
-
-            objectloop (i in player) give i moved ~concealed;
-
-            if (j ~= 2) Banner();
-
-            MoveFloatingObjects();
-            lightflag = OffersLight(parent(player));
-            if (lightflag == 0) {
-                real_location = location;
-                location = thedark;
-            }
-            <Look>;
-
-            for (i=1 : i<=100 : i++) j = random(i);
-
-            #Ifdef EnglishNaturalLanguage;
-            old_itobj = itobj; old_himobj = himobj; old_herobj = herobj;
-            #Endif;! EnglishNaturalLanguage
-
+            GamePrologue();
             while (~~deadflag) {    ! everything happens in this loop
 
                 #Ifdef EnglishNaturalLanguage;
@@ -4557,7 +4876,7 @@ Object  InformLibrary "(Inform Library)"
               .late__error;
 
                 inputobjs-->0 = 0; inputobjs-->1 = 0;
-                inputobjs-->2 = 0; inputobjs-->3 = 0; meta=false;
+                inputobjs-->2 = 0; inputobjs-->3 = 0; meta = false;
 
                 ! The Parser writes its results into inputobjs and meta,
                 ! a flag indicating a "meta-verb".  This can only be set for
@@ -4615,40 +4934,13 @@ Object  InformLibrary "(Inform Library)"
                 }
                 else second = inp2;
 
-                !  --------------------------------------------------------------
-
-                if (actor ~= player) {
-
-                ! The player's "orders" property can refuse to allow conversation
-                ! here, by returning true.  If not, the order is sent to the
-                ! other person's "orders" property.  If that also returns false,
-                ! then: if it was a misunderstood command anyway, it is converted
-                ! to an Answer action (thus "floyd, grrr" ends up as
-                ! "say grrr to floyd").  If it was a good command, it is finally
-                ! offered to the Order: part of the other person's "life"
-                ! property, the old-fashioned way of dealing with conversation.
-
-                    j = RunRoutines(player, orders);
-                    if (j == 0) {
-                        j = RunRoutines(actor, orders);
-                        if (j == 0) {
-                            if (action == ##NotUnderstood) {
-                                inputobjs-->3 = actor; actor = player; action = ##Answer;
-                                jump begin__action;
-                            }
-                            if (RunLife(actor, ##Order) == 0) L__M(##Order, 1, actor);
-                        }
-                    }
-                    jump turn__end;
-                }
-
                 ! --------------------------------------------------------------
                 ! Generate the action...
 
                 if ((i == 0) ||
                     (i == 1 && inp1 ~= 0) ||
                     (i == 2 && inp1 ~= 0 && inp2 ~= 0)) {
-                    self.begin_action(action, noun, second, 0);
+                    if (self.actor_act(actor, action, noun, second)) jump begin__action;
                     jump turn__end;
                 }
 
@@ -4679,16 +4971,22 @@ Object  InformLibrary "(Inform Library)"
                     PronounNotice(l);
                     print (name) l, ": ";
                     if (inp1 == 0) {
-                        inp1 = l; self.begin_action(action, l, second, 0); inp1 = 0;
+                        inp1 = l;
+                        if (self.actor_act(actor, action, l, second)) jump begin__action;
+                        inp1 = 0;
                     }
                     else {
-                        inp2 = l; self.begin_action(action, noun, l, 0); inp2 = 0;
+                        inp2 = l;
+                        if (self.actor_act(actor, action, noun, l)) jump begin__action;
+                        inp2 = 0;
                     }
                 }
 
                 ! --------------------------------------------------------------
 
               .turn__end;
+
+                keep_silent = 0;    ! should be zero anyway, but just in case...
 
                 ! No time passes if either (i) the verb was meta, or
                 ! (ii) we've only had the implicit take before the "real"
@@ -4698,75 +4996,173 @@ Object  InformLibrary "(Inform Library)"
                 if (meta) continue;
                 if (~~deadflag) self.end_turn_sequence();
                 else if (START_MOVE ~= 1) turns++;
-
             } ! end of while()
 
-            if (deadflag ~= 2) AfterLife();
+            if (deadflag ~= 2 && AfterLife() == false)
+                 LibraryExtensions.RunAll(ext_afterlife);
             if (deadflag == 0) jump very__late__error;
-
-            print "^^    ";
-            #Ifdef TARGET_ZCODE;
-            #IfV5; style bold; #Endif; ! V5
-            #Ifnot; ! TARGET_GLULX
-            glk($0086, 5); ! set alert style
-            #Endif; ! TARGET_
-            print "***";
-            if (deadflag == 1) L__M(##Miscellany, 3);
-            if (deadflag == 2) L__M(##Miscellany, 4);
-            if (deadflag > 2)  {
-                print " ";
-                DeathMessage();
-                print " ";
-            }
-            print "***";
-            #Ifdef TARGET_ZCODE;
-            #IfV5; style roman; #Endif; ! V5
-            #Ifnot; ! TARGET_GLULX
-            glk($0086, 0); ! set normal style
-            #Endif; ! TARGET_
-            #Ifdef NO_SCORE;
-            print "^^";
-            #Ifnot;
-            print "^^^";
-            #Endif; ! NO_SCORE
-            ScoreSub();
-            DisplayStatus();
-            AfterGameOver();
-
+            GameEpilogue();
         ], ! end of 'play' property
 
         end_turn_sequence [;
-            AdvanceWorldClock();
-            if (deadflag) return;
-            RunTimersAndDaemons();
-            if (deadflag) return;
-            RunEachTurnProperties();
-            if (deadflag) return;
-            TimePasses();
-            if (deadflag) return;
-            AdjustLight();
-            if (deadflag) return;
+            AdvanceWorldClock();        if (deadflag) return;
+            RunTimersAndDaemons();      if (deadflag) return;
+            RunEachTurnProperties();    if (deadflag) return;
+            if (TimePasses() == 0)  LibraryExtensions.RunAll(ext_timepasses);
+                                        if (deadflag) return;
+            AdjustLight();              if (deadflag) return;
             NoteObjectAcquisitions();
         ],
+
+        actor_act [ p a n s  j sp sa sn ss;
+            sp = actor; actor = p;
+            if (p ~= player) {
+                ! The player's "orders" property can refuse to allow
+                ! conversation here, by returning true.  If not, the order is
+                ! sent to the other person's "orders" property.  If that also
+                ! returns false, then: if it was a misunderstood command
+                ! anyway, it is converted to an Answer action (thus
+                ! "floyd, grrr" ends up as "say grrr to floyd").  If it was a
+                ! good command, it is finally offered to the Order: part of
+                ! the other person's "life" property, the old-fashioned
+                ! way of dealing with conversation.
+
+                sa = action; sn = noun; ss = second;
+                action = a; noun = n; second = s;
+                j = RunRoutines(player, orders);
+                if (j == 0) {
+                    j = RunRoutines(actor, orders);
+                    if (j == 0) {
+                        if (action == ##NotUnderstood) {
+                            inputobjs-->3 = actor; actor = player; action = ##Answer;
+                            rtrue; ! abort, not resetting action globals
+                        }
+                        if (RunLife(actor, ##Order) == 0) L__M(##Order, 1, actor);
+                    }
+                }
+                action = sa; noun = sn; second = ss;
+            }
+            else
+                self.begin_action(a, n, s, 0);
+            actor = sp;
+            ],
 
         begin_action [ a n s source   sa sn ss;
             sa = action; sn = noun; ss = second;
             action = a; noun = n; second = s;
             #Ifdef DEBUG;
-            if (debug_flag & 2 ~= 0) TraceAction(source);
+            if (debug_flag & DEBUG_ACTIONS) TraceAction(source);
             #Ifnot;
             source = 0;
             #Endif; ! DEBUG
+
             #Iftrue (Grammar__Version == 1);
-            if ((meta || BeforeRoutines() == false) && action < 256)
-                ActionPrimitive();
+            if ((meta || BeforeRoutines() == false) && action < 256) {
+		#Ifdef INFIX;
+		if (infix_verb) {
+		    if (BeforeRoutines() == false)
+			ActionPrimitive();
+		} else ActionPrimitive();
+		#Ifnot;
+		ActionPrimitive();
+		#Endif;
+	    }
             #Ifnot;
-            if ((meta || BeforeRoutines() == false) && action < 4096)
-                ActionPrimitive();
+            if ((meta || BeforeRoutines() == false) && action < 4096) {
+		#Ifdef INFIX;
+		if (infix_verb) {
+		    if (BeforeRoutines() == false)
+			ActionPrimitive();
+		} else ActionPrimitive();
+		#Ifnot;
+		ActionPrimitive();
+		#Endif;
+	    }
             #Endif; ! Grammar__Version
             action = sa; noun = sn; second = ss;
         ],
   has   proper;
+
+! ----------------------------------------------------------------------------
+! Routines called before and after main 'play' loop
+
+[ GamePrologue i j;
+    before_first_turn = true;
+    for (i=1 : i<=100 : i++) j = random(i);
+
+    ChangeDefault(cant_go, CANTGO__TX);
+
+    real_location = thedark;
+    player = selfobj; actor = player;
+    selfobj.capacity = MAX_CARRIED; ! ### change?
+
+    #Ifdef LanguageInitialise;
+    LanguageInitialise();
+    #Endif; ! LanguageInitialise
+
+    #Ifdef EnglishNaturalLanguage;
+    old_itobj = itobj; old_himobj = himobj; old_herobj = herobj;
+    #Endif;! EnglishNaturalLanguage
+
+    new_line;
+    LibraryExtensions.RunAll(ext_initialise);
+    j = Initialise();
+    last_score = score;
+    initial_lookmode = lookmode;
+
+    objectloop (i in player) give i moved ~concealed;
+    move player to location;
+    while (parent(location)) location = parent(location);
+    real_location = location;
+    MoveFloatingObjects();
+
+    actor = player; ! resync, because player may have been changed in Initialise()
+    actors_location = location;
+
+    lightflag = OffersLight(parent(player));
+    if (lightflag == 0) location = thedark;
+
+    if (j ~= 2) Banner();
+#ifndef NOINITIAL_LOOK;
+    <Look>;
+#endif;
+    before_first_turn = false;
+];
+
+[ GameEpilogue;
+    print "^^    ";
+    #Ifdef TARGET_ZCODE;
+    #IfV5; style bold; #Endif; ! V5
+    #Ifnot; ! TARGET_GLULX
+    glk($0086, 5); ! set alert style
+    #Endif; ! TARGET_
+    print "***";
+    switch (deadflag) {
+      1:        L__M(##Miscellany, 3);
+      2:        L__M(##Miscellany, 4);
+      default:  print " ";
+                if (DeathMessage() == false)
+                    LibraryExtensions.RunAll(ext_deathmessage);
+                print " ";
+    }
+    print "***";
+    #Ifdef TARGET_ZCODE;
+    #IfV5; style roman; #Endif; ! V5
+    #Ifnot; ! TARGET_GLULX
+    glk($0086, 0); ! set normal style
+    #Endif; ! TARGET_
+    print "^^";
+    #Ifndef NO_SCORE;
+    print "^";
+    #Endif; ! NO_SCORE
+    Epilogue();
+    ScoreSub();
+    DisplayStatus();
+    AfterGameOver();
+];
+
+! ----------------------------------------------------------------------------
+! Routines called at end of each turn
 
 [ AdvanceWorldClock;
     turns++;
@@ -4785,7 +5181,7 @@ Object  InformLibrary "(Inform Library)"
 
 [ RunTimersAndDaemons i j;
     #Ifdef DEBUG;
-    if (debug_flag & 4 ~= 0) {
+    if (debug_flag & DEBUG_TIMERS) {
         for (i=0 : i<active_timers : i++) {
             j = the_timers-->i;
             if (j ~= 0) {
@@ -4823,17 +5219,19 @@ Object  InformLibrary "(Inform Library)"
     scope_reason = PARSING_REASON;
 ];
 
+! ----------------------------------------------------------------------------
+
 #Ifdef TARGET_ZCODE;
 
-[ ActionPrimitive; indirect(#actions_table-->action); ];
+[ ActionPrimitive; (#actions_table-->action)(); ];
 
 #Ifnot; ! TARGET_GLULX
 
-[ ActionPrimitive; indirect(#actions_table-->(action+1)); ];
+[ ActionPrimitive; (#actions_table-->(action+1))(); ];
 
 #Endif; ! TARGET_
 
-[ AfterGameOver i;
+[ AfterGameOver i amus_ret;
 
   .RRQPL;
 
@@ -4872,8 +5270,13 @@ Object  InformLibrary "(Inform Library)"
         new_line; FullScoreSub();
         jump RRQPL;
     }
-    if (deadflag == 2 && i == AMUSING__WD && AMUSING_PROVIDED==0) {
-        new_line; Amusing();
+    if (deadflag == 2 && i == AMUSING__WD) {
+        amus_ret = false;
+        if (AMUSING_PROVIDED == 0) {
+            new_line;
+            amus_ret = Amusing();
+        }
+        if (amus_ret == false) LibraryExtensions.RunAll(ext_amusing);
         jump RRQPL;
     }
     #IfV5;
@@ -4900,12 +5303,6 @@ Object  InformLibrary "(Inform Library)"
     jump RRQL;
 ];
 
-[ R_Process a i j s1 s2;
-    s1 = inp1; s2 = inp2;
-    inp1 = i; inp2 = j; InformLibrary.begin_action(a, i, j, 1);
-    inp1 = s1; inp2 = s2;
-];
-
 [ NoteObjectAcquisitions i;
     objectloop (i in player)
         if (i hasnt moved) {
@@ -4915,6 +5312,19 @@ Object  InformLibrary "(Inform Library)"
                 things_score = things_score + OBJECT_SCORE;
             }
         }
+];
+
+! ----------------------------------------------------------------------------
+! R_Process is invoked by the <...> and <<...>> statements, whose syntax is:
+!   <action [noun] [second]>                ! traditional
+!   <action [noun] [second], actor>         ! introduced at compiler 6.33
+
+[ R_Process a n s p
+    s1 s2 s3;
+    s1 = inp1; s2 = inp2; s3 = actor;
+    inp1 = n; inp2 = s; if (p) actor = p; else actor = player;
+    InformLibrary.begin_action(a, n, s, 1);
+    inp1 = s1; inp2 = s2; actor = s3;
 ];
 
 ! ----------------------------------------------------------------------------
@@ -4940,30 +5350,34 @@ Object  InformLibrary "(Inform Library)"
     parser_one = x; scope_reason = y; actor = a; actors_location = al;
 ];
 
-[ BeforeRoutines;
-    if (GamePreRoutine() ~= 0) rtrue;
-    if (RunRoutines(player, orders) ~= 0) rtrue;
-    scope_reason = REACT_BEFORE_REASON; parser_one=0;
+[ BeforeRoutines rv;
+    if (GamePreRoutine()) rtrue;
+    if (rv == false) rv=LibraryExtensions.RunWhile(ext_gamepreroutine, 0);
+    if (rv) rtrue;
+    if (RunRoutines(player, orders)) rtrue;
+    scope_reason = REACT_BEFORE_REASON; parser_one = 0;
     SearchScope(ScopeCeiling(player), player, 0);
     scope_reason = PARSING_REASON;
-    if (parser_one ~= 0) rtrue;
-    if (location ~= 0 && RunRoutines(location, before) ~= 0) rtrue;
-    if (inp1 > 1 && RunRoutines(inp1, before) ~= 0) rtrue;
+    if (parser_one) rtrue;
+    if (location && RunRoutines(location, before)) rtrue;
+    if (inp1 > 1 && RunRoutines(inp1, before)) rtrue;
     rfalse;
 ];
 
-[ AfterRoutines;
+[ AfterRoutines rv;
     scope_reason = REACT_AFTER_REASON; parser_one = 0;
     SearchScope(ScopeCeiling(player), player, 0); scope_reason = PARSING_REASON;
-    if (parser_one ~= 0) rtrue;
-    if (location ~= 0 && RunRoutines(location, after) ~= 0) rtrue;
-    if (inp1 > 1 && RunRoutines(inp1, after) ~= 0) rtrue;
-    return GamePostRoutine();
+    if (parser_one) rtrue;
+    if (location && RunRoutines(location, after)) rtrue;
+    if (inp1 > 1 && RunRoutines(inp1, after)) rtrue;
+    rv = GamePostRoutine();
+    if (rv == false) rv=LibraryExtensions.RunWhile(ext_gamepostroutine, false);
+    return rv;
 ];
 
 [ RunLife a j;
     #Ifdef DEBUG;
-    if (debug_flag & 2 ~= 0) TraceAction(2, j);
+    if (debug_flag & DEBUG_ACTIONS) TraceAction(2, j);
     #Endif; ! DEBUG
     reason_code = j; return RunRoutines(a,life);
 ];
@@ -4978,7 +5392,7 @@ Object  InformLibrary "(Inform Library)"
 ];
 
 [ PrintOrRun obj prop flag;
-    if (obj.#prop > WORDSIZE) return RunRoutines(obj,prop);
+    if (obj.#prop > WORDSIZE) return RunRoutines(obj, prop);
     if (obj.prop == NULL) rfalse;
     switch (metaclass(obj.prop)) {
       Class, Object, nothing:
@@ -4988,7 +5402,7 @@ Object  InformLibrary "(Inform Library)"
         if (flag == 0) new_line;
         rtrue;
       Routine:
-        return RunRoutines(obj,prop);
+        return RunRoutines(obj, prop);
     }
 ];
 
@@ -5010,6 +5424,7 @@ Object  InformLibrary "(Inform Library)"
 [ ValueOrRun obj prop;
   !### this is entirely unlikely to work. Does anyone care? (AP)
   ! Well, it's certainly used three times in verblibm.h (RF)
+  ! Update: now not used (RF)
     if (obj.prop < 256) return obj.prop;
     return RunRoutines(obj, prop);
 ];
@@ -5049,7 +5464,7 @@ Object  InformLibrary "(Inform Library)"
     i = active_timers++;
     if (i >= MAX_TIMERS) { RunTimeError(4); return; }
   .FoundTSlot;
-    if (obj.&time_left == 0) { RunTimeError(5,obj); return; }
+    if (obj.&time_left == 0) { RunTimeError(5, obj, time_left); return; }
     the_timers-->i = obj; obj.time_left = timer;
 ];
 
@@ -5058,7 +5473,7 @@ Object  InformLibrary "(Inform Library)"
         if (the_timers-->i == obj) jump FoundTSlot2;
     rfalse;
   .FoundTSlot2;
-    if (obj.&time_left == 0) { RunTimeError(5,obj); return; }
+    if (obj.&time_left == 0) { RunTimeError(5, obj, time_left); return; }
     the_timers-->i = 0; obj.time_left = 0;
 ];
 
@@ -5121,7 +5536,7 @@ Object  InformLibrary "(Inform Library)"
             return L__M(##Miscellany, 9);
         }
     }
-    if (i == 0 && lightflag == 0) location=thedark;
+    if (i == 0 && lightflag == 0) location = thedark;
 ];
 
 [ OffersLight i j;
@@ -5170,18 +5585,24 @@ Object  InformLibrary "(Inform Library)"
 ];
 
 [ ChangePlayer obj flag i;
-!   if (obj.&number == 0) return RunTimeError(7,obj);
+!   if (obj.&number == 0) return RunTimeError(7, obj);
     if (actor == player) actor=obj;
     give player ~transparent ~concealed;
     i = obj; while (parent(i) ~= 0) {
         if (i has animate) give i transparent;
         i = parent(i);
     }
-    if (player == selfobj) player.short_name = FORMER__TX;
+    if (player == selfobj && player.nameless == true)
+        if (player.narrative_voice == 1)
+	    player.short_name = MYFORMER__TX;
+        else if (player.narrative_voice == 2)
+            player.short_name = FORMER__TX;
 
     player = obj;
 
-    if (player == selfobj) player.short_name = NULL;
+    if (player == selfobj && player.nameless == true)
+	player.short_name = NULL;
+
     give player transparent concealed animate proper;
     i = player; while (parent(i) ~= 0) i = parent(i);
     location = i; real_location = location;
@@ -5329,62 +5750,58 @@ Object  InformLibrary "(Inform Library)"
 
 #Ifdef TARGET_ZCODE;
 
-[ ShowVerbSub address lines da meta i j;
-    if (noun == 0 || ((noun->#dict_par1) & 1) == 0)
+[ ShowVerbSub grammar lines j;
+    if (noun == 0 || ((noun->#dict_par1) & DICT_VERB) == 0)
         "Try typing ~showverb~ and then the name of a verb.";
-    meta = ((noun->#dict_par1) & 2)/2;
-    i = $ff-(noun->#dict_par2);
-    address = (HDR_STATICMEMORY-->0)-->i;
-    lines = address->0;
-    address++;
-    print "Verb ";
-    if (meta) print "meta ";
-    da = HDR_DICTIONARY-->0;
-    for (j=0 : j<(da+5)-->0 : j++)
-        if (da->(j*9 + 14) == $ff-i) print "'", (address) (da + 9*j + 7), "' ";
+    print "Verb";
+    if ((noun->#dict_par1) & DICT_META) print " meta";
+    for (j=dict_start : j<dict_end : j=j+dict_entry_size)
+        if (j->#dict_par2 == noun->#dict_par2)
+            print " '", (address) j, "'";
     new_line;
+    grammar = (HDR_STATICMEMORY-->0)-->($ff-(noun->#dict_par2));
+    lines = grammar->0;
+    grammar++;
     if (lines == 0) "has no grammar lines.";
     for (: lines>0 : lines--) {
-        address = UnpackGrammarLine(address);
+        grammar = UnpackGrammarLine(grammar);
         print "    "; DebugGrammarLine(); new_line;
     }
 ];
 
 #Ifnot; ! TARGET_GLULX
 
-[ ShowVerbSub address lines i j meta wd dictlen entrylen;
-    if (noun == 0 || ((noun->#dict_par1) & 1) == 0)
+[ ShowVerbSub grammar lines j wd dictlen entrylen;
+    if (noun == 0 || ((noun->#dict_par1) & DICT_VERB) == 0)
         "Try typing ~showverb~ and then the name of a verb.";
-    meta = ((noun->#dict_par1) & 2)/2;
-    i = $ff-(noun->#dict_par2);
-    address = (#grammar_table)-->(i+1);
-    lines = address->0;
-    address++;
-    print "Verb ";
-    if (meta) print "meta ";
+    print "Verb";
+    if ((noun->#dict_par1) & DICT_META) print " meta";
     dictlen = #dictionary_table-->0;
     entrylen = DICT_WORD_SIZE + 7;
     for (j=0 : j<dictlen : j++) {
         wd = #dictionary_table + WORDSIZE + entrylen*j;
-        if (wd->#dict_par2 == $ff-i)
-            print "'", (address) wd, "' ";
+        if (wd->#dict_par2 == noun->#dict_par2)
+            print " '", (address) wd, "'";
     }
     new_line;
+    grammar = (#grammar_table)-->($ff-(noun->#dict_par2)+1);
+    lines = grammar->0;
+    grammar++;
     if (lines == 0) "has no grammar lines.";
     for (: lines>0 : lines--) {
-        address = UnpackGrammarLine(address);
+        grammar = UnpackGrammarLine(grammar);
         print "    "; DebugGrammarLine(); new_line;
     }
 ];
 
 #Endif; ! TARGET_
 
-[ ShowobjSub c f l a n x numattr;
+[ ShowObjSub c f l a n x numattr;
     if (noun == 0) noun = location;
     objectloop (c ofclass Class) if (noun ofclass c) { f++; l=c; }
     if (f == 1) print (name) l, " ~"; else print "Object ~";
     print (name) noun, "~ (", noun, ")";
-    if (parent(noun) ~= 0) print " in ~", (name) parent(noun), "~";
+    if (parent(noun)) print " in ~", (name) parent(noun), "~ (", parent(noun), ")";
     new_line;
     if (f > 1) {
         print "  class ";
@@ -5446,6 +5863,66 @@ Object  InformLibrary "(Inform Library)"
 !   if (f==1) new_line;
 ];
 
+[ ShowDictSub_helper x; print (address) x; ];
+[ ShowDictSub
+    dp el ne   f x y z;
+
+    #Ifdef TARGET_ZCODE;
+    dp = HDR_DICTIONARY-->0;             ! start of dictionary
+    dp = dp + dp->0 + 1;                 ! skip over word-separators table
+    el = dp->0;  dp = dp + 1;            ! entry length
+    ne = dp-->0; dp = dp + WORDSIZE;     ! number of entries
+    #Ifnot; ! TARGET_GLULX;
+    dp = #dictionary_table;              ! start of dictionary
+    el = DICT_WORD_SIZE + 7;             ! entry length
+    ne = dp-->0; dp = dp + WORDSIZE;     ! number of entries
+    #Endif; ! TARGET_
+                                         ! dp now at first entry
+    wn = 2; x = NextWordStopped();
+    switch (x) {
+      0:
+        "That word isn't in the dictionary.";
+      -1:
+        ;                                ! show all entries
+      THEN1__WD:
+        dp = './/'; ne = 1;              ! show '.'
+      COMMA_WORD:
+        dp = ',//'; ne = 1;              ! show ','
+      default:
+        dp = x; ne = 1; f = true;        ! show specified entry, plus associated objects
+    }
+    for ( : ne-- : dp=dp+el) {
+        print (address) dp, " --> ";
+        x = dp->#dict_par1;              ! flag bits
+        y = PrintToBuffer(StorageForShortName, SHORTNAMEBUF_LEN, ShowDictSub_helper, dp) + WORDSIZE;
+        for (z=WORDSIZE : z<y : z++) {
+            !if (x & DICT_NOUN) StorageForShortName->z = UpperCase(StorageForShortName->z);
+            if (y > WORDSIZE+1 && StorageForShortName->z == ' ' or '.' or ',') x = x | $8000;
+            print (char) StorageForShortName->z;
+        }
+        print " --> ";
+        if (x == 0)
+            print " no flags";
+        else {
+            !if (x & $0040)     print " BIT_6";
+            !if (x & $0020)     print " BIT_5";
+            !if (x & $0010)     print " BIT_4";
+            if (x & $8000)     print " UNTYPEABLE";
+            if (x & DICT_NOUN) print " noun";
+            if (x & DICT_PLUR) print "+plural";
+            if (x & DICT_VERB) print " verb";
+            if (x & DICT_META) print "+meta";
+            if (x & DICT_PREP) print " preposition";
+            if (f && (x & DICT_NOUN)) {
+                print " --> refers to these objects:";
+                objectloop (x)
+                    if (WordInProperty(dp, x, name)) print "^  ", (name) x, " (", x, ")";
+            }
+        }
+        new_line;
+    }
+];
+
 #Endif; ! DEBUG
 
 ! ----------------------------------------------------------------------------
@@ -5476,27 +5953,31 @@ Object  InformLibrary "(Inform Library)"
 #Ifndef MoveCursor;
 [ MoveCursor line column;  ! 1-based postion on text grid
     if (~~statuswin_current) {
-         @set_window 1;
-         if (clr_on && clr_bgstatus > 1) @set_colour clr_fgstatus clr_bgstatus;
-         else                            style reverse;
+        @set_window 1;
+        #Ifdef COLOUR;
+        if (clr_on && clr_bgstatus > 1)
+            @set_colour clr_fgstatus clr_bgstatus;
+        else
+        #Endif; ! COLOUR
+            style reverse;
     }
-    if (line == 0) {
-        line = 1;
-        column = 1;
-    }
+    if (line == 0) { line = 1; column = 1; }
     #Iftrue (#version_number == 6);
     MoveCursorV6(line, column);
     #Ifnot;
     @set_cursor line column;
     #Endif;
-statuswin_current = true;
+    statuswin_current = true;
 ];
 #Endif;
 
 [ MainWindow;
     if (statuswin_current) {
+#Ifdef COLOUR;
         if (clr_on && clr_bgstatus > 1) @set_colour clr_fg clr_bg;
-        else                            style roman;
+        else
+#Endif; ! COLOUR
+            style roman;
         @set_window 0;
         }
     statuswin_current = false;
@@ -5507,6 +5988,7 @@ statuswin_current = true;
     @get_wind_prop 1 3 -> width;
     @get_wind_prop 1 13 -> charw;
     charw = charw & $FF;
+    if (charw == 0) return width;
     return (width+charw-1) / charw;
 ];
 #Ifnot;
@@ -5545,8 +6027,9 @@ statuswin_current = true;
 ];
 #Endif;
 
+#Ifdef COLOUR;
 [ SetColour f b window;
-    if (clr_on && f && b) {
+    if (f && b) {
         if (window == 0) {  ! if setting both together, set reverse
             clr_fgstatus = b;
             clr_bgstatus = f;
@@ -5559,12 +6042,15 @@ statuswin_current = true;
             clr_fg = f;
             clr_bg = b;
         }
-        if (statuswin_current)
-            @set_colour clr_fgstatus clr_bgstatus;
-        else
-            @set_colour clr_fg clr_bg;
+        if (clr_on) {
+            if (statuswin_current)
+                @set_colour clr_fgstatus clr_bgstatus;
+            else
+                @set_colour clr_fg clr_bg;
+        }
     }
 ];
+#Endif; ! COLOUR
 
 
 #Ifnot; ! TARGET_GLULX
@@ -5584,10 +6070,7 @@ statuswin_current = true;
     if (gg_statuswin) {
         glk($002F, gg_statuswin); ! set_window
     }
-    if (line == 0) {
-        line = 1;
-        column = 1;
-    }
+    if (line == 0) { line = 1; column = 1; }
     glk($002B, gg_statuswin, column-1, line-1); ! window_move_cursor
     statuswin_current=1;
 ];
@@ -5615,36 +6098,39 @@ statuswin_current = true;
     return gg_arguments-->0;
 ];
 
+#Ifdef COLOUR;
 [ SetColour f b window doclear  i fwd bwd swin;
-    if (clr_on && f && b) {
+    if (f && b) {
         if (window) swin = 5-window; ! 4 for TextGrid, 3 for TextBuffer
 
-        fwd = MakeColourWord(f);
-        bwd = MakeColourWord(b);
-        for (i=0 : i<=10: i++) {
-            if (f == CLR_DEFAULT || b == CLR_DEFAULT) {  ! remove style hints
-                glk($00B1, swin, i, 7);
-                glk($00B1, swin, i, 8);
+        if (clr_on) {
+            fwd = MakeColourWord(f);
+            bwd = MakeColourWord(b);
+            for (i=0 : i<=10: i++) {
+                if (f == CLR_DEFAULT || b == CLR_DEFAULT) { ! remove style hints
+                    glk($00B1, swin, i, 7);
+                    glk($00B1, swin, i, 8);
+                }
+                else {
+                    glk($00B0, swin, i, 7, fwd);
+                    glk($00B0, swin, i, 8, bwd);
+                }
+
+            ! Now re-open the windows to apply the hints
+            if (gg_statuswin) glk($0024, gg_statuswin, 0); ! close_window
+
+            if (doclear || ( window ~= 1 && (clr_fg ~= f || clr_bg ~= b) ) ) {
+                glk($0024, gg_mainwin, 0);
+                gg_mainwin = glk($0023, 0, 0, 0, 3, GG_MAINWIN_ROCK); ! window_open
+                if (gg_scriptstr ~= 0)
+                    glk($002D, gg_mainwin, gg_scriptstr); ! window_set_echo_stream
             }
-            else {
-                glk($00B0, swin, i, 7, fwd);
-                glk($00B0, swin, i, 8, bwd);
-            }
+
+            gg_statuswin = glk($0023, gg_mainwin, $12, gg_statuswin_cursize,
+               4, GG_STATUSWIN_ROCK); ! window_open
+            if (statuswin_current && gg_statuswin)
+                MoveCursor(); else MainWindow();
         }
-
-        ! Now re-open the windows to apply the hints
-        if (gg_statuswin) glk($0024, gg_statuswin, 0); ! close_window
-
-        if (doclear || ( window ~= 1 && (clr_fg ~= f || clr_bg ~= b) ) ) {
-            glk($0024, gg_mainwin, 0);
-            gg_mainwin = glk($0023, 0, 0, 0, 3, GG_MAINWIN_ROCK); ! window_open
-            if (gg_scriptstr ~= 0)
-                glk($002D, gg_mainwin, gg_scriptstr); ! window_set_echo_stream
-        }
-
-        gg_statuswin = glk($0023, gg_mainwin, $12, gg_statuswin_cursize,
-           4, GG_STATUSWIN_ROCK); ! window_open
-        if (statuswin_current && gg_statuswin) MoveCursor(); else MainWindow();
 
         if (window ~= 2) {
             clr_fgstatus = f;
@@ -5656,23 +6142,33 @@ statuswin_current = true;
         }
     }
 ];
+#Endif; ! COLOUR
+#Endif; ! TARGET_
+
+#Ifndef COLOUR;
+[ SetColour f b window doclear;
+    f = b = window = doclear = 0;
+];
 #Endif;
 
 [ SetClr f b w;
     SetColour (f, b, w);
 ];
 
-[ RestoreColours;    ! L61007
+[ RestoreColours;    ! L61007, L61113
+    gg_statuswin_cursize = -1;    ! Force window split in StatusLineHeight()
+    #Ifdef COLOUR;
     if (clr_on) { ! check colour has been used
         SetColour(clr_fg, clr_bg, 2); ! make sure both sets of variables are restored
         SetColour(clr_fgstatus, clr_bgstatus, 1, true);
         ClearScreen();
     }
+    #Endif;
     #Ifdef TARGET_ZCODE;
     #Iftrue (#version_number == 6); ! request screen update
     (0-->8) = (0-->8) | $$00000100;
     #Endif;
-    #Endif;
+    #Endif; ! TARGET_
 ];
 
 ! ----------------------------------------------------------------------------
@@ -5688,56 +6184,56 @@ statuswin_current = true;
 
 #Iftrue (#version_number == 6);
 [ DrawStatusLine width x charw scw mvw;
-   (0-->8) = (0-->8) &~ $$00000100;
+    HDR_GAMEFLAGS-->0 = (HDR_GAMEFLAGS-->0) & ~$0004;
 
-   StatusLineHeight(gg_statuswin_size);
-   ! Now clear the window. This isn't totally trivial. Our approach is to select the
-   ! fixed space font, measure its width, and print an appropriate
-   ! number of spaces. We round up if the screen isn't a whole number
-   ! of characters wide, and rely on window 1 being set to clip by default.
-   MoveCursor(1, 1);
-   @set_font 4 -> x;
-   width = ScreenWidth();
-   spaces width;
-   ! Back to standard font for the display. We use output_stream 3 to
-   ! measure the space required, the aim being to get 50 characters
-   ! worth of space for the location name.
-   MoveCursor(1, 2);
-   @set_font 1 -> x;
-   if (location == thedark)
-       print (name) location;
-   else {
-       FindVisibilityLevels();
-       if (visibility_ceiling == location) print (name) location;
-       else                                print (The) visibility_ceiling;
-   }
-   @get_wind_prop 1 3 -> width;
-   @get_wind_prop 1 13 -> charw;
-   charw = charw & $FF;
-   @output_stream 3 StorageForShortName;
-   print (string) SCORE__TX, "00000";
-   @output_stream -3; scw = HDR_PIXELSTO3-->0 + charw;
-   @output_stream 3 StorageForShortName;
-   print (string) MOVES__TX, "00000";
-   @output_stream -3; mvw = HDR_PIXELSTO3-->0 + charw;
-   if (width - scw - mvw >= 50*charw) {
-       x = 1+width-scw-mvw;
-       @set_cursor 1 x; print (string) SCORE__TX, sline1;
-       x = x+scw;
-       @set_cursor 1 x; print (string) MOVES__TX, sline2;
-   }
-   else {
-       @output_stream 3 StorageForShortName;
-       print "00000/00000";
-       @output_stream -3; scw = HDR_PIXELSTO3-->0 + charw;
-       if (width - scw >= 50*charw) {
-           x = 1+width-scw;
-           @set_cursor 1 x; print sline1, "/", sline2;
-       }
-   }
-   ! Reselect roman, as Infocom's interpreters interpreters go funny
-   ! if reverse is selected twice.
-   MainWindow();
+    StatusLineHeight(gg_statuswin_size);
+    ! Now clear the window. This isn't totally trivial. Our approach is to
+    ! select the fixed space font, measure its width, and print an appropriate
+    ! number of spaces. We round up if the screen isn't a whole number of
+    ! characters wide, and rely on window 1 being set to clip by default.
+    MoveCursor(1, 1);
+    @set_font 4 -> x;
+    width = ScreenWidth();
+    spaces width;
+    ! Back to standard font for the display. We use output_stream 3 to
+    ! measure the space required, the aim being to get 50 characters
+    ! worth of space for the location name.
+    MoveCursor(1, 2);
+    @set_font 1 -> x;
+    if (location == thedark)
+        print (name) location;
+    else {
+        FindVisibilityLevels();
+        if (visibility_ceiling == location) print (name) location;
+        else                                print (The) visibility_ceiling;
+    }
+    @get_wind_prop 1 3 -> width;
+    @get_wind_prop 1 13 -> charw;
+    charw = charw & $FF;
+    @output_stream 3 StorageForShortName;
+    print (string) SCORE__TX, "00000";
+    @output_stream -3; scw = HDR_PIXELSTO3-->0 + charw;
+    @output_stream 3 StorageForShortName;
+    print (string) MOVES__TX, "00000";
+    @output_stream -3; mvw = HDR_PIXELSTO3-->0 + charw;
+    if (width - scw - mvw >= 50*charw) {
+        x = 1+width-scw-mvw;
+        @set_cursor 1 x; print (string) SCORE__TX, sline1;
+        x = x+scw;
+        @set_cursor 1 x; print (string) MOVES__TX, sline2;
+    }
+    else {
+        @output_stream 3 StorageForShortName;
+        print "00000/00000";
+        @output_stream -3; scw = HDR_PIXELSTO3-->0 + charw;
+        if (width - scw >= 50*charw) {
+            x = 1+width-scw;
+            @set_cursor 1 x; print sline1, "/", sline2;
+        }
+    }
+    ! Reselect roman, as Infocom's interpreters interpreters go funny
+    ! if reverse is selected twice.
+    MainWindow();
 ];
 
 #Endif; ! #version_number == 6
@@ -5820,7 +6316,8 @@ statuswin_current = true;
     if (gg_quotewin == 0) {
         gg_arguments-->0 = lines;
         ix = InitGlkWindow(GG_QUOTEWIN_ROCK);
-        if (ix == 0)
+        if (ix == false) ix = LibraryExtensions.RunWhile(ext_InitGlkWindow, 0, GG_QUOTEWIN_ROCK);
+        if (ix == false)
             gg_quotewin = glk($0023, gg_mainwin, $12, lines, 3,
                 GG_QUOTEWIN_ROCK); ! window_open
     }
@@ -5852,7 +6349,33 @@ statuswin_current = true;
 
 #Endif; ! TARGET_GLULX
 
-#Ifdef TARGET_GLULX;
+
+#Ifdef TARGET_ZCODE;
+
+[ ZZInitialise;
+    standard_interpreter = HDR_TERPSTANDARD-->0;
+   transcript_mode = ((HDR_GAMEFLAGS-->0) & $0001);
+    sys_statusline_flag = ( (HDR_TERPFLAGS->0) & $0002 ) / 2;
+    top_object = #largest_object-255;
+
+    dict_start = HDR_DICTIONARY-->0;
+    dict_entry_size = dict_start->(dict_start->0 + 1);
+    dict_start = dict_start + dict_start->0 + 4;
+    dict_end = dict_start + (dict_start - 2)-->0 * dict_entry_size;
+    #Ifdef DEBUG;
+    if (dict_start > 0 && dict_end < 0 &&
+      ((-dict_start) - dict_end) % dict_entry_size == 0)
+        print "** Warning: grammar properties might not work correctly **^";
+    #Endif; ! DEBUG
+
+    buffer->0  = INPUT_BUFFER_LEN - WORDSIZE;
+    buffer2->0 = INPUT_BUFFER_LEN - WORDSIZE;
+    buffer3->0 = INPUT_BUFFER_LEN - WORDSIZE;
+    parse->0   = MAX_BUFFER_WORDS;
+    parse2->0  = MAX_BUFFER_WORDS;
+];
+
+#Ifnot; ! TARGET_GLULX;
 
 [ GGInitialise res;
     @gestalt 4 2 res; ! Test if this interpreter has Glk.
@@ -5869,16 +6392,17 @@ statuswin_current = true;
     ! have just typed "restart".
 
     GGRecoverObjects();
-
     res = InitGlkWindow(0);
-    if (res ~= 0) return;
+    if (res == false) res = LibraryExtensions.RunWhile(ext_InitGlkWindow, 0, 0);
+    if (res) return;
 
     ! Now, gg_mainwin and gg_storywin might already be set. If not, set them.
 
     if (gg_mainwin == 0) {
         ! Open the story window.
         res = InitGlkWindow(GG_MAINWIN_ROCK);
-        if (res == 0)
+        if (res == false) res = LibraryExtensions.RunWhile(ext_InitGlkWindow, 0, GG_MAINWIN_ROCK);
+        if (res == false)
             gg_mainwin = glk($0023, 0, 0, 0, 3, GG_MAINWIN_ROCK); ! window_open
         if (gg_mainwin == 0) {
             ! If we can't even open one window, there's no point in going on.
@@ -5892,7 +6416,8 @@ statuswin_current = true;
 
     if (gg_statuswin == 0) {
         res = InitGlkWindow(GG_STATUSWIN_ROCK);
-        if (res == 0) {
+        if (res == false) res = LibraryExtensions.RunWhile(ext_InitGlkWindow, 0, GG_STATUSWIN_ROCK);
+        if (res == false) {
             gg_statuswin_cursize = gg_statuswin_size;
             gg_statuswin = glk($0023, gg_mainwin, $12, gg_statuswin_cursize,
                 4, GG_STATUSWIN_ROCK); ! window_open
@@ -5903,7 +6428,7 @@ statuswin_current = true;
 
     glk($002F, gg_mainwin); ! set_window
 
-    InitGlkWindow(1);
+    if (InitGlkWindow(1) == false) LibraryExtensions.RunWhile(ext_InitGlkWindow, 0, 1);
 ];
 
 [ GGRecoverObjects id;
@@ -5923,7 +6448,7 @@ statuswin_current = true;
     gg_command_reading = false;
     #Endif; ! DEBUG
     ! Also tell the game to clear its object references.
-    IdentifyGlkObject(0);
+    if (IdentifyGlkObject(0) == false) LibraryExtensions.RunWhile(ext_identifyglkobject, 0, 0);
 
     id = glk($0040, 0, gg_arguments); ! stream_iterate
     while (id) {
@@ -5936,7 +6461,8 @@ statuswin_current = true;
             GG_COMMANDRSTR_ROCK: gg_commandstr = id;
                                  gg_command_reading = true;
             #Endif; ! DEBUG
-            default: IdentifyGlkObject(1, 1, id, gg_arguments-->0);
+            default: if (IdentifyGlkObject(1, 1, id, gg_arguments-->0) == false)
+                         LibraryExtensions.RunWhile(ext_identifyglkobject, false, 1, 1, id, gg_arguments-->0);
         }
         id = glk($0040, id, gg_arguments); ! stream_iterate
     }
@@ -5947,7 +6473,8 @@ statuswin_current = true;
             GG_MAINWIN_ROCK: gg_mainwin = id;
             GG_STATUSWIN_ROCK: gg_statuswin = id;
             GG_QUOTEWIN_ROCK: gg_quotewin = id;
-            default: IdentifyGlkObject(1, 0, id, gg_arguments-->0);
+            default: if (IdentifyGlkObject(1, 0, id, gg_arguments-->0) == false)
+                        LibraryExtensions.RunWhile(ext_identifyglkobject, false, 1, 0, id, gg_arguments-->0);
         }
         id = glk($0020, id, gg_arguments); ! window_iterate
     }
@@ -5956,13 +6483,15 @@ statuswin_current = true;
     while (id) {
         switch (gg_arguments-->0) {
             GG_SCRIPTFREF_ROCK: gg_scriptfref = id;
-            default: IdentifyGlkObject(1, 2, id, gg_arguments-->0);
+            default: if (IdentifyGlkObject(1, 2, id, gg_arguments-->0) == false)
+                        LibraryExtensions.RunWhile(ext_identifyglkobject, false, 1, 2, id, gg_arguments-->0);
         }
         id = glk($0064, id, gg_arguments); ! fileref_iterate
     }
 
     ! Tell the game to tie up any loose ends.
-    IdentifyGlkObject(2);
+    if (IdentifyGlkObject(2) == false)
+        LibraryExtensions.RunWhile(ext_identifyglkobject, 0, 2);
 ];
 
 ! This somewhat obfuscated function will print anything.
@@ -5984,6 +6513,7 @@ statuswin_current = true;
 ! PrintAnything(func, args...)       func(args...);
 
 [ PrintAnything _vararg_count obj mclass;
+    print_anything_result = 0;
     if (_vararg_count == 0) return;
     @copy sp obj;
     _vararg_count--;
@@ -6006,7 +6536,7 @@ statuswin_current = true;
       Routine:
         ! Call the function with all the arguments which are already
         ! on the stack.
-        @call obj _vararg_count 0;
+        @call obj _vararg_count print_anything_result;
         return;
       Object:
         if (_vararg_count == 0) {
@@ -6017,7 +6547,7 @@ statuswin_current = true;
             ! veneer routine that handles obj.prop() calls.
             @copy obj sp;
             _vararg_count++;
-            @call CA__Pr _vararg_count 0;
+            @call CA__Pr _vararg_count print_anything_result;
         }
         return;
     }
@@ -6076,55 +6606,59 @@ Array AnyToStrArr -> GG_ANYTOSTRING_LEN+1;
     return AnyToStrArr;
 ];
 
-#Endif; ! TARGET_GLULX
+#Endif; ! TARGET_
 
 ! This is a trivial function which just prints a number, in decimal
 ! digits. It may be useful as a stub to pass to PrintAnything.
 
 [ DecimalNumber num; print num; ];
 
-#IfV5;
+#Ifndef SHORTNAMEBUF_LEN;               ! Can't use 'Default', unfortunately,
+Constant SHORTNAMEBUF_LEN 160;          ! but this is functionally equivalent
+#Endif;
 
+#IfV5;
 #Ifdef VN_1630;
-Array StorageForShortName buffer 160;
+Array StorageForShortName buffer SHORTNAMEBUF_LEN;
 #Ifnot;
-Array StorageForShortName -> 160 + WORDSIZE;
+Array StorageForShortName -> WORDSIZE + SHORTNAMEBUF_LEN;
 #Endif; ! VN_1630
 
 #Endif; ! V5
 
 #Ifdef TARGET_ZCODE;
 
-! Platform-independent way of printing strings and properties to a
-! buffer (defined as length word followed by byte characters).
+! Platform-independent way of printing strings, routines and properties
+! to a buffer (defined as length word followed by byte characters).
 
-[ PrintToBuffer buf len a b c;
+[ PrintToBuffer buf len a b c d e;
+    print_anything_result = 0;
     @output_stream 3 buf;
     switch (metaclass(a)) {
       String:
         print (string) a;
       Routine:
-        a(b, c);
+        print_anything_result = a(b, c, d, e);
       Object,Class:
         if (b)
-            PrintOrRun(a, b, true);
+            print_anything_result = PrintOrRun(a, b, true);
         else
             print (name) a;
     }
     @output_stream -3;
-    if (buf-->0 > len) print "Error: Overflow in PrintToBuffer.^";
+    if (buf-->0 > len) RunTimeError(14, len, "in PrintToBuffer()");
     return buf-->0;
 ];
 
 #Ifnot; ! TARGET_GLULX
 
-[ PrintToBuffer buf len a b;
+[ PrintToBuffer buf len a b c d e;
     if (b) {
         if (metaclass(a) == Object && a.#b == WORDSIZE
             && metaclass(a.b) == String)
             buf-->0 = PrintAnyToArray(buf+WORDSIZE, len, a.b);
         else
-            buf-->0 = PrintAnyToArray(buf+WORDSIZE, len, a, b);
+            buf-->0 = PrintAnyToArray(buf+WORDSIZE, len, a, b, c, d, e);
     }
     else
         buf-->0 = PrintAnyToArray(buf+WORDSIZE, len, a);
@@ -6134,104 +6668,74 @@ Array StorageForShortName -> 160 + WORDSIZE;
 
 #Endif; ! TARGET_
 
+! Print contents of buffer (defined as length word followed by byte characters).
+! no_break == 1: omit trailing newline.
+! set_case == 1: capitalise first letter;
+!          == 2: capitalise first letter, remainder lower case;
+!          == 3: all lower case;
+!          == 4: all upper case.
+! centred == 1:  add leading spaces.
+
+[ PrintFromBuffer buf no_break set_case centred
+    i j k;
+    j = (buf-->0) - 1;
+    if (buf->(j+WORDSIZE) ~= 10 or 13) j++;     ! trim any trailing newline
+    if (centred) {
+        k = (ScreenWidth() - j) / 2;
+        if (k>0) spaces k;
+    }
+    for (i=0 : i<j : i++) {
+        k = buf->(WORDSIZE+i);
+        switch (set_case) {
+          0:    break;
+          1:    if (i) set_case = 0;
+                else   k = UpperCase(k);
+          2:    if (i) k = LowerCase(k);
+                else   k = UpperCase(k);
+          3:           k = LowerCase(k);
+          4:           k = UpperCase(k);
+        }
+        print (char) k;
+    }
+    if (no_break == false) new_line;
+    return j;
+];
+
 ! None of the following functions should be called for zcode if the
 ! output exceeds the size of the buffer.
 
-[ Length a b;
-    PrintToBuffer(StorageForShortName, 160, a, b);
+[ StringSize a b c d e;
+    PrintToBuffer(StorageForShortName, 160, a, b, c, d, e);
     return StorageForShortName-->0;
 ];
 
-#Ifdef TARGET_ZCODE;
-
-[ LowerCase c;
-   switch (c) {
-     'A' to 'Z':
-       c = c + 32;
-     202, 204, 212, 214, 221:
-       c--;
-     217, 218:
-       c = c - 2;
-     158 to 160, 167 to 169, 208 to 210:
-       c = c - 3;
-     186 to 190, 196 to 200:
-       c = c - 5 ;
-     175 to 180:
-       c = c - 6;
-   }
-   return c;
-];
-
-[ UpperCase c;
-   switch (c) {
-     'a' to 'z':
-       c = c - 32;
-     201, 203, 211, 213, 220:
-       c++;
-     215, 216:
-       c = c + 2;
-     155 to 157, 164 to 166, 205 to 207:
-       c = c + 3;
-     181 to 185, 191 to 195:
-       c = c + 5 ;
-     169 to 174:
-       c = c + 6;
-   }
-   return c;
-];
-
-#Ifnot; ! TARGET_GLULX
-
-[ LowerCase c; return glk($00A0, c); ];
-[ UpperCase c; return glk($00A1, c); ];
-
-#Endif; ! TARGET_
-
-[ PrintCapitalised obj prop flag nocaps centred  length i width;
-    ! a variation of PrintOrRun, capitalising the first letter and returning nothing
-
-    if (obj ofclass String || prop == 0) {
-        PrintToBuffer (StorageForShortName, 160, obj);
-        flag = 1;
-    }
+[ PrintCapitalised a b no_break no_caps centred;
+    if (metaclass(a) == Routine or String || b == 0 || metaclass(a.b) == Routine or String)
+        PrintToBuffer(StorageForShortName, SHORTNAMEBUF_LEN, a, b);
     else
-        if (obj.#prop > WORDSIZE || metaclass(obj.prop) == Routine or String) {
-            PrintToBuffer(StorageForShortName, 160, obj, prop);
-        }
-        else
-            if (obj.prop == NULL) rfalse;
-            else                  return RunTimeError(2, obj, prop);
-
-    length = StorageForShortName-->0;
-    width = ScreenWidth();
-    if (centred && length<width)
-        spaces ( (width-length)/2 );
-    if (~~nocaps)
-        StorageForShortName->WORDSIZE = UpperCase(StorageForShortName->WORDSIZE);
-
-    for (i=WORDSIZE: i<length+WORDSIZE: i++) print (char) StorageForShortName->i;
-
-    if (flag == 0 && obj.#prop == WORDSIZE && metaclass(obj.prop) == String)
-        new_line;
-    return;
+        if (a.b == NULL) rfalse;
+        else             return RunTimeError(2, a, b);
+    if (no_caps == 0 or 1) no_caps = ~~no_caps;
+    PrintFromBuffer(StorageForShortName, no_break, no_caps, centred);
+    return print_anything_result;
 ];
 
 [ Centre a b;
-    PrintCapitalised(a, b, 0, 1, 1);
+    PrintCapitalised(a, b, false, true, true);
 ];
 
-[ Cap str nocaps;
-    if (nocaps) print (string) str;
-    else        PrintCapitalised(str);
+[ CapitRule str no_caps;
+    if (no_caps) print (string) str;
+    else         PrintCapitalised(str);
 ];
 
 [ PrefaceByArticle o acode pluralise capitalise  i artform findout artval;
     if (o provides articles) {
         artval=(o.&articles)-->(acode+short_name_case*LanguageCases);
         if (capitalise)
-            print (Cap) artval, " ";
+            print (CapitRule) artval;
         else
-            print (string) artval, " ";
+            print (string) artval;
         if (pluralise) return;
         print (PSN__) o; return;
     }
@@ -6262,8 +6766,8 @@ Array StorageForShortName -> 160 + WORDSIZE;
     #Endif; ! LanguageContractionForms
 
     #Ifdef TARGET_ZCODE;
-    if (standard_interpreter ~= 0 && findout) {
-        StorageForShortName-->0 = 160;
+    if (standard_interpreter && findout) {
+        StorageForShortName-->0 = SHORTNAMEBUF_LEN;
         @output_stream 3 StorageForShortName;
         if (pluralise) print (number) pluralise; else print (PSN__) o;
         @output_stream -3;
@@ -6272,14 +6776,14 @@ Array StorageForShortName -> 160 + WORDSIZE;
     #Ifnot; ! TARGET_GLULX
     if (findout) {
         if (pluralise)
-            PrintAnyToArray(StorageForShortName, 160, EnglishNumber, pluralise);
+            PrintAnyToArray(StorageForShortName, SHORTNAMEBUF_LEN, EnglishNumber, pluralise);
         else
-            PrintAnyToArray(StorageForShortName, 160, PSN__, o);
+            PrintAnyToArray(StorageForShortName, SHORTNAMEBUF_LEN, PSN__, o);
         acode = acode + 3*LanguageContraction(StorageForShortName);
     }
     #Endif; ! TARGET_
 
-    Cap (artform-->acode, ~~capitalise); ! print article
+    CapitRule (artform-->acode, ~~capitalise); ! print article
     if (pluralise) return;
     print (PSN__) o;
 ];
@@ -6291,7 +6795,6 @@ Array StorageForShortName -> 160 + WORDSIZE;
       String:   print "<string ~", (string) o, "~>"; rtrue;
       nothing:  print "<illegal object number ", o, ">"; rtrue;
     }
-    if (o == player) { print (string) YOURSELF__TX; rtrue; }
     #Ifdef LanguagePrintShortName;
     if (LanguagePrintShortName(o)) rtrue;
     #Endif; ! LanguagePrintShortName
@@ -6300,56 +6803,93 @@ Array StorageForShortName -> 160 + WORDSIZE;
     print (object) o;
 ];
 
-[ Indefart o i;
-    i = indef_mode; indef_mode = true;
-    if (o has proper) { indef_mode = NULL; print (PSN__) o; return; }
+[ Indefart o saveIndef;
+    saveIndef = indef_mode; indef_mode = true; caps_mode = false;
+    if (o has proper) {
+        indef_mode = NULL;
+        print (PSN__) o;
+        indef_mode = saveIndef;
+        return;
+    }
+
     if (o provides article) {
-        PrintOrRun(o, article, 1); print " ", (PSN__) o; indef_mode = i;
+        PrintOrRun(o, article, 1);
+        print " ", (PSN__) o;
+        indef_mode = saveIndef;
         return;
     }
-    PrefaceByArticle(o, 2); indef_mode = i;
+    PrefaceByArticle(o, 2);
+    indef_mode = saveIndef;
 ];
 
-[ CInDefArt o i;
-    i = indef_mode; indef_mode = true;
-    if (o has proper) { indef_mode = NULL; print (PSN__) o; return; }
+[ CInDefArt o saveIndef saveCaps;
+    saveIndef = indef_mode; indef_mode = true;
+    saveCaps = caps_mode; caps_mode = true;
+
+    if (o has proper) {
+        indef_mode = NULL;
+        PrintToBuffer(StorageForShortName, SHORTNAMEBUF_LEN, PSN__, o);
+        PrintFromBuffer(StorageForShortName, true, caps_mode);
+        caps_mode = saveCaps;
+        return;
+    }
+
     if (o provides article) {
-        PrintCapitalised(o, article, 1); print " ", (PSN__) o; indef_mode = i;
+        PrintCapitalised(o, article, true);
+        print " ", (PSN__) o;
+        indef_mode = saveIndef;
+        caps_mode = saveCaps;
         return;
     }
-    PrefaceByArticle(o, 2, 0, 1); indef_mode = i;
+    PrefaceByArticle(o, 2, 0, 1);
+    caps_mode = saveCaps;
+    indef_mode = saveIndef;
 ];
 
-[ Defart o i;
-    i = indef_mode; indef_mode = false;
+[ Defart o saveIndef;
+    saveIndef = indef_mode;
+    indef_mode = false;
+    caps_mode = false;
     if ((~~o ofclass Object) || o has proper) {
-        indef_mode = NULL; print (PSN__) o; indef_mode = i;
+        indef_mode = NULL;
+        print (PSN__) o;
+        indef_mode = saveIndef;
         return;
     }
-    PrefaceByArticle(o, 1); indef_mode = i;
+    PrefaceByArticle(o, 1);
+    indef_mode = saveIndef;
 ];
 
-[ CDefart o i;
-    #Ifdef YOU__TX;
-    if (o == player) {
-        print (string) YOU__TX;
-        return;
+[ CDefart o saveIndef saveCaps;
+    saveIndef = indef_mode; indef_mode = false;
+    saveCaps = caps_mode; caps_mode = true;
+    if (~~o ofclass Object) {
+        indef_mode = NULL; print (PSN__) o;
     }
-    #Endif;
-    i = indef_mode; indef_mode = false;
-    if ((~~o ofclass Object) || o has proper) {
-        indef_mode = NULL; print (PSN__) o; indef_mode = i;
-        return;
-    }
-    PrefaceByArticle(o, 0); indef_mode = i;
+    else
+        if (o has proper) {
+            indef_mode = NULL;
+            PrintToBuffer(StorageForShortName, SHORTNAMEBUF_LEN, PSN__, o);
+            PrintFromBuffer(StorageForShortName, true, caps_mode);
+        }
+        else
+            PrefaceByArticle(o, 0);
+    indef_mode = saveIndef; caps_mode = saveCaps;
 ];
 
-[ PrintShortName o i;
-    i = indef_mode; indef_mode = NULL;
-    PSN__(o); indef_mode = i;
+[ PrintShortName o saveIndef;
+    saveIndef = indef_mode; indef_mode = NULL;
+    PSN__(o); indef_mode = saveIndef;
 ];
 
 [ EnglishNumber n; LanguageNumber(n); ];
+
+[ SerialComma n;
+    #Ifdef SERIAL_COMMAS;
+    if (n>2) print ",";
+    #Endif;
+    n=0;        ! quell unused n variable warning
+];
 
 [ NumberWord o i n;
     n = LanguageNumbers-->0;
@@ -6444,6 +6984,7 @@ Object  LibraryExtensions "(Library Extensions)"
                 if (obj provides prop && obj.prop ofclass Routine) {
                     rval = obj.prop(a1, a2, a3);
                     if (rval > max) max = rval;
+                    if (self.BetweenCalls) self.BetweenCalls();
                 }
             return max;
         ],
@@ -6453,8 +6994,9 @@ Object  LibraryExtensions "(Library Extensions)"
                 if (obj provides prop && obj.prop ofclass Routine) {
                     rval = obj.prop(a1, a2, a3);
                     if (rval == exitval) return rval;
+                    if (self.BetweenCalls) self.BetweenCalls();
                 }
-            return ~exitval;
+            return ~~exitval;
         ],
         RunWhile [ prop exitval a1 a2 a3
             obj rval;
@@ -6462,11 +7004,63 @@ Object  LibraryExtensions "(Library Extensions)"
                 if (obj provides prop && obj.prop ofclass Routine) {
                     rval = obj.prop(a1, a2, a3);
                     if (rval ~= exitval) return rval;
+                    if (self.BetweenCalls) self.BetweenCalls();
                 }
             return exitval;
         ],
-        ext_initialise 0,
-        ext_messages 0,
+
+        ext_number_1 0, ! general temporary workspace
+
+        ! can be set to a function (e.g. RestoreWN) meant for execution
+        ! after non-terminating calls to extension objects
+        ! (via RunUntil/While/All)
+        BetweenCalls 0,
+        RestoreWN [; wn = self.ext_number_1; ],
+
+        ! Special interception points
+        ext_messages            0,  ! Called if LibraryMessages.before()
+                                    !    returns false
+                                    ! Extensions run while they return false
+
+        ! Cross-platform entry points
+        !                             Called/Runs
+        ext_afterlife           0,  ! [C2/R1]
+        ext_afterprompt         0,  ! [C2/R1]
+        ext_amusing             0,  ! [C2/R1]
+        ext_beforeparsing       0,  ! [C2/R2]
+        ext_chooseobjects       0,  ! [C2/R2]
+        ext_darktodark          0,  ! [C2/R1]
+        ext_deathmessage        0,  ! [C2/R1]
+        ext_gamepostroutine     0,  ! [C2/R2]
+        ext_gamepreroutine      0,  ! [C2/R2]
+        ext_initialise          0,  ! [C1/R1]
+        ext_inscope             0,  ! [C2/R2]
+        ext_lookroutine         0,  ! [C2/R1]
+        ext_newroom             0,  ! [C2/R1]
+        ext_objectdoesnotfit    0,  ! [C2/R2]
+        ext_parsenoun           0,  ! [C3/R3]
+        ext_parsenumber         0,  ! [C2/R2]
+        ext_parsererror         0,  ! [C2/R2]
+        ext_printrank           0,  ! [C2/R1]
+        ext_printtaskname       0,  ! [C2/R1]
+        ext_printverb           0,  ! [C2/R2]
+        ext_timepasses          0,  ! [C2/R1]
+        ext_unknownverb         0,  ! [C2/R2]
+        !                             [C1] = Called in all cases
+        !                             [C2] = Called if EP is undefined, or returns false
+        !                             [C3] = called if EP is undefined, or returns -1
+        !                             [R1] = All extensions run
+        !                             [R2] = Extensions run while they return false
+        !                             [R3] = Extensions run while they return -1
+
+        #Ifdef TARGET_GLULX;
+        ! Glulx entry points
+        !                             Called:           Runs:
+        ext_handleglkevent      0,  ! if EP undefined   while extensions return false
+        ext_identifyglkobject   0,  ! if EP undefined   while extensions return false
+        ext_initglkwindow       0,  ! if EP undefined   while extensions return false
+        #Endif; ! TARGET_GLULX;
+
   has   proper;
 
 ! ==============================================================================

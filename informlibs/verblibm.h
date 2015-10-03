@@ -1,9 +1,14 @@
 ! ==============================================================================
 !   VERBLIBM:  Core of standard verbs library.
 !
-!   Supplied for use with Inform 6 -- Release 6/11 -- Serial number 040227
+!   Supplied for use with Inform 6 -- Release 6/12-beta1 -- Serial number 140724
 !
-!   Copyright Graham Nelson 1993-2004 but freely usable (see manuals)
+!   Copyright Graham Nelson 1993-2004 and David Griffith 2012-2014
+!
+!   This code is licensed under either the traditional Inform license as
+!   described by the DM4 or the Artistic License version 2.0.  See the
+!   file COPYING in the distribution archive or at
+!   https://github.com/DavidGriffith/inform6lib/
 !
 !   This file is automatically Included in your game file by "VerbLib".
 ! ==============================================================================
@@ -12,15 +17,21 @@ System_file;
 
 #Ifdef MODULE_MODE;
 Constant DEBUG;
-Constant Grammar__Version2;
+Constant Grammar__Version 2;
 Include "linklpa";
 Include "linklv";
 #Endif; ! MODULE_MODE
 
+Global no_implicit_actions = false;
+
 ! ------------------------------------------------------------------------------
 
 [ Banner i;
-   if (Story ~= 0) {
+    #Ifdef LanguageBanner;
+    LanguageBanner();
+    i = 0;  ! suppress warning
+    #Ifnot;
+    if (Story) {
         #Ifdef TARGET_ZCODE;
         #IfV5; style bold; #Endif;
         print (string) Story;
@@ -31,7 +42,7 @@ Include "linklv";
         glk($0086, 0); ! set normal style
         #Endif; ! TARGET_
     }
-    if (Headline ~= 0) print (string) Headline;
+    if (Headline) print (string) Headline;
     #Ifdef TARGET_ZCODE;
     print "Release ", (HDR_GAMERELEASE-->0) & $03ff, " / Serial number ";
     for (i=0 : i<6 : i++) print (char) HDR_GAMESERIAL->i;
@@ -55,9 +66,14 @@ Include "linklv";
     #Endif; ! DEBUG
     #Endif; ! INFIX
     new_line;
+    #Endif; ! LanguageBanner
 ];
 
 [ VersionSub ix;
+    #Ifdef LanguageVersionSub;
+    LanguageVersionSub();
+    ix = 0;  ! suppress warning
+    #Ifnot;
     Banner();
     #Ifdef TARGET_ZCODE;
     ix = 0; ! shut up compiler warning
@@ -84,7 +100,7 @@ Include "linklv";
     #Ifnot; ! TARGET_GLULX;
     @gestalt 1 0 ix;
     print "Interpreter version ", ix / $10000, ".", (ix & $FF00) / $100,
-    ".", ix & $FF, " / ";
+      ".", ix & $FF, " / ";
     @gestalt 0 0 ix;
     print "VM ", ix / $10000, ".", (ix & $FF00) / $100, ".", ix & $FF, " / ";
     #Endif; ! TARGET_;
@@ -92,11 +108,15 @@ Include "linklv";
     #Ifdef LanguageVersion;
     print (string) LanguageVersion, "^";
     #Endif; ! LanguageVersion
+    #Endif; ! LanguageVersionSub
 ];
 
 [ RunTimeError n p1 p2;
+    #Ifdef LanguageError;
+    LanguageError(n, p1, p2);
+    #Ifnot;
     #Ifdef DEBUG;
-    print "** Library error ", n, " (", p1, ",", p2, ") **^** ";
+    print "** Library error ", n, " (", p1, ", ", p2, ") **^** ";
     switch (n) {
       1:    print "preposition not found (this should not occur)";
       2:    print "Property value not routine or string: ~", (property) p2, "~ of ~", (name) p1,
@@ -104,24 +124,27 @@ Include "linklv";
       3:    print "Entry in property list not routine or string: ~", (property) p2, "~ list of ~",
                   (name) p1, "~ (", p1, ")";
       4:    print "Too many timers/daemons are active simultaneously.
-                  The limit is the library constant MAX_TIMERS (currently ",
-                  MAX_TIMERS, ") and should be increased";
-      5:    print "Object ~", (name) p1, "~ has no ~time_left~ property";
+                  The limit is the library constant MAX_TIMERS 
+                  (currently ", MAX_TIMERS, ") and should be increased";
+      5:    print "Object ~", (name) p1, "~ has no ~", (property) p2, "~ property";
       7:    print "The object ~", (name) p1, "~ can only be used as a player object if it has
                   the ~number~ property";
       8:    print "Attempt to take random entry from an empty table array";
       9:    print p1, " is not a valid direction property number";
       10:   print "The player-object is outside the object tree";
-      11:   print "The room ~", (name) p1, "~ has no ~description~ property";
+      11:   print "The room ~", (name) p1, "~ has no ~", (property) p2, "~ property";
       12:   print "Tried to set a non-existent pronoun using SetPronoun";
       13:   print "A 'topic' token can only be followed by a preposition";
+      14:   print "Overflowed buffer limit of ", p1, " using '@@64output_stream 3' ", (string) p2;
+      15:   print "LoopWithinObject broken because the object ", (name) p1, " was moved while the loop passed through it.";
       default:
             print "(unexplained)";
     }
     " **";
     #Ifnot;
-    "** Library error ", n, " (", p1, ",", p2, ") **";
+    "** Library error ", n, " (", p1, ", ", p2, ") **";
     #Endif; ! DEBUG
+    #Endif; ! LanguageError
 ];
 
 ! ----------------------------------------------------------------------------
@@ -135,45 +158,47 @@ Include "linklv";
 !  o is the object, and style is a bitmap, whose bits are given by:
 ! ----------------------------------------------------------------------------
 
-Constant NEWLINE_BIT       1;       ! New-line after each entry
-Constant INDENT_BIT        2;       ! Indent each entry by depth
-Constant FULLINV_BIT       4;       ! Full inventory information after entry
-Constant ENGLISH_BIT       8;       ! English sentence style, with commas and and
-Constant RECURSE_BIT      16;       ! Recurse downwards with usual rules
-Constant ALWAYS_BIT       32;       ! Always recurse downwards
-Constant TERSE_BIT        64;       ! More terse English style
-Constant PARTINV_BIT     128;       ! Only brief inventory information after entry
-Constant DEFART_BIT      256;       ! Use the definite article in list
-Constant WORKFLAG_BIT    512;       ! At top level (only), only list objects
+
+Constant NEWLINE_BIT   $0001;       ! New-line after each entry
+Constant INDENT_BIT    $0002;       ! Indent each entry by depth
+Constant FULLINV_BIT   $0004;       ! Full inventory information after entry
+Constant ENGLISH_BIT   $0008;       ! English sentence style, with commas and and
+Constant RECURSE_BIT   $0010;       ! Recurse downwards with usual rules
+Constant ALWAYS_BIT    $0020;       ! Always recurse downwards
+Constant TERSE_BIT     $0040;       ! More terse English style
+Constant PARTINV_BIT   $0080;       ! Only brief inventory information after entry
+Constant DEFART_BIT    $0100;       ! Use the definite article in list
+Constant WORKFLAG_BIT  $0200;       ! At top level (only), only list objects
                                     ! which have the "workflag" attribute
-Constant ISARE_BIT      1024;       ! Print " is" or " are" before list
-Constant CONCEAL_BIT    2048;       ! Omit objects with "concealed" or "scenery":
+Constant ISARE_BIT     $0400;       ! Print " is" or " are" before list
+Constant CONCEAL_BIT   $0800;       ! Omit objects with "concealed" or "scenery":
                                     ! if WORKFLAG_BIT also set, then does _not_
                                     ! apply at top level, but does lower down
-Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
+Constant NOARTICLE_BIT $1000;       ! Print no articles, definite or not
+Constant ID_BIT        $2000;       ! Print object id after each entry
 
 [ NextEntry o odepth;
     for (::) {
         o = sibling(o);
         if (o == 0) return 0;
-        if (lt_value ~= 0 && o.list_together ~= lt_value) continue;
-        if (c_style & WORKFLAG_BIT ~= 0 && odepth==0 && o hasnt workflag) continue;
-        if (c_style & CONCEAL_BIT ~= 0 && (o has concealed || o has scenery)) continue;
+        if (lt_value && o.list_together ~= lt_value) continue;
+        if (c_style & WORKFLAG_BIT && odepth==0 && o hasnt workflag) continue;
+        if (c_style & CONCEAL_BIT && (o has concealed || o has scenery)) continue;
         return o;
     }
 ];
 
 [ WillRecurs o;
-    if (c_style & ALWAYS_BIT ~= 0) rtrue;
+    if (c_style & ALWAYS_BIT) rtrue;
     if (c_style & RECURSE_BIT == 0) rfalse;
-    if (o has transparent || o has supporter || (o has container && o has open)) rtrue;
+    if ((o has transparent or supporter) || (o has container && o has open)) rtrue;
     rfalse;
 ];
 
 [ ListEqual o1 o2;
-    if (child(o1) ~= 0 && WillRecurs(o1) ~= 0) rfalse;
-    if (child(o2) ~= 0 && WillRecurs(o2) ~= 0) rfalse;
-    if (c_style & (FULLINV_BIT + PARTINV_BIT) ~= 0) {
+    if (child(o1) && WillRecurs(o1)) rfalse;
+    if (child(o2) && WillRecurs(o2)) rfalse;
+    if (c_style & (FULLINV_BIT + PARTINV_BIT)) {
         if ((o1 hasnt worn && o2 has worn) || (o2 hasnt worn && o1 has worn)) rfalse;
         if ((o1 hasnt light && o2 has light) || (o2 hasnt light && o1 has light)) rfalse;
         if (o1 has container) {
@@ -189,36 +214,36 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ SortTogether obj value;
     ! print "Sorting together possessions of ", (object) obj, " by value ", value, "^";
-    ! for (x=child(obj) : x~=0 : x=sibling(x))
+    ! for (x=child(obj) : x : x=sibling(x))
     !     print (the) x, " no: ", x, " lt: ", x.list_together, "^";
-    while (child(obj) ~= 0) {
+    while (child(obj)) {
         if (child(obj).list_together ~= value) move child(obj) to out_obj;
         else                                   move child(obj) to in_obj;
     }
-    while (child(in_obj) ~= 0)  move child(in_obj) to obj;
-    while (child(out_obj) ~= 0) move child(out_obj) to obj;
+    while (child(in_obj))  move child(in_obj) to obj;
+    while (child(out_obj)) move child(out_obj) to obj;
 ];
 
 [ SortOutList obj i k l;
     !  print "^^Sorting out list from ", (name) obj, "^  ";
-    !  for (i=child(location) : i~=0 : i=sibling(i))
+    !  for (i=child(location) : i : i=sibling(i))
     !      print (name) i, " --> ";
     !  new_line;
 
   .AP_SOL;
 
-    for (i=obj : i~=0 : i=sibling(i)) {
+    for (i=obj : i : i=sibling(i)) {
         k = i.list_together;
         if (k ~= 0) {
             ! print "Scanning ", (name) i, " with lt=", k, "^";
-            for (i=sibling(i) : i~=0 && i.list_together == k :) i = sibling(i);
+            for (i=sibling(i) : i && i.list_together == k :) i = sibling(i);
             if (i == 0) rfalse;
             ! print "First not in block is ", (name) i, " with lt=", i.list_together, "^";
-            for (l=sibling(i) : l~=0 : l=sibling(l))
+            for (l=sibling(i) : l : l=sibling(l))
                 if (l.list_together == k) {
                     SortTogether(parent(obj), k);
                     ! print "^^After ST:^  ";
-                    ! for (i=child(location) : i~=0 : i=sibling(i))
+                    ! for (i=child(location) : i : i=sibling(i))
                     !     print (name) i, " --> ";
                     ! new_line;
                     obj = child(parent(obj));
@@ -246,15 +271,11 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 #Endif; ! TARGET_
 
-[ WriteListFrom o style depth;
+[ WriteListFrom o style depth
+    s1 s2 s3 s4 s5 s6;
 
-    #Ifdef TARGET_ZCODE;
-    @push c_style;      @push lt_value;   @push listing_together;
-    @push listing_size; @push wlf_indent; @push inventory_stage;
-    #Ifnot; ! TARGET_GLULX
-    @copy c_style sp;      @copy lt_value sp;   @copy listing_together sp;
-    @copy listing_size sp; @copy wlf_indent sp; @copy inventory_stage sp;
-    #Endif;
+    s1 = c_style;      s2 = lt_value;   s3 = listing_together;
+    s4 = listing_size; s5 = wlf_indent; s6 = inventory_stage;
 
     if (o == child(parent(o))) {
         SortOutList(o);
@@ -264,13 +285,8 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     wlf_indent = 0;
     WriteListR(o, depth);
 
-    #Ifdef TARGET_ZCODE;
-    @pull inventory_stage;  @pull wlf_indent; @pull listing_size;
-    @pull listing_together; @pull lt_value;   @pull c_style;
-    #Ifnot; ! TARGET_GLULX
-    @copy sp inventory_stage;  @copy sp wlf_indent; @copy sp listing_size;
-    @copy sp listing_together; @copy sp lt_value;   @copy sp c_style;
-    #Endif;
+    c_style = s1;      lt_value = s2;   listing_together = s3;
+    listing_size = s4; wlf_indent = s5; inventory_stage = s6;
     rtrue;
 ];
 
@@ -281,11 +297,11 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     }
     for (::) {
         if (o == 0) rfalse;
-        if (c_style & WORKFLAG_BIT ~= 0 && depth==0 && o hasnt workflag) {
+        if (c_style & WORKFLAG_BIT && depth==0 && o hasnt workflag) {
             o = sibling(o);
             continue;
         }
-        if (c_style & CONCEAL_BIT ~= 0 && (o has concealed || o has scenery)) {
+        if (c_style & CONCEAL_BIT && (o has concealed || o has scenery)) {
             o = sibling(o);
             continue;
         }
@@ -294,15 +310,15 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     classes_p = match_classes + stack_pointer;
     sizes_p   = match_list + stack_pointer;
 
-    for (i=o,j=0 : i~=0 && (j+stack_pointer)<128 : i=NextEntry(i,depth),j++) {
+    for (i=o,j=0 : i && (j+stack_pointer)<128 : i=NextEntry(i,depth),j++) {
         classes_p->j = 0;
-        if (i.plural ~= 0) k++;
+        if (i.plural) k++;
     }
 
-    if (c_style & ISARE_BIT ~= 0) {
+    if (c_style & ISARE_BIT) {
         if (j == 1 && o hasnt pluralname) print (string) IS__TX;
         else                              print (string) ARE__TX;
-        if (c_style & NEWLINE_BIT ~= 0)   print ":^";
+        if (c_style & NEWLINE_BIT)   print ":^";
         else                              print (char) ' ';
         c_style = c_style - ISARE_BIT;
     }
@@ -314,8 +330,8 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     for (i=o,k=0 : k<j : i=NextEntry(i,depth),k++)
         if (classes_p->k == 0) {
             classes_p->k = n; sizes_p->n = 1;
-            for (l=NextEntry(i,depth),m=k+1 : l~=0 && m<j : l=NextEntry(l,depth),m++)
-                if (classes_p->m == 0 && i.plural ~= 0 && l.plural ~= 0) {
+            for (l=NextEntry(i,depth),m=k+1 : l && m<j : l=NextEntry(l,depth),m++)
+                if (classes_p->m == 0 && i.plural && l.plural ~= 0) {
                     if (ListEqual(i, l) == 1) {
                         sizes_p->n = sizes_p->n + 1;
                         classes_p->m = n;
@@ -332,7 +348,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
         m = sizes_p->i;
         if (j == 0) mr = 0;
         else {
-            if (j.list_together ~= 0 or lt_value && ZRegion(j.list_together) == 2 or 3 &&
+            if (j.list_together ~= 0 or lt_value && ZRegion(j.list_together) == Routine or String &&
                 j.list_together == mr) senc--;
             mr = j.list_together;
         }
@@ -350,8 +366,8 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
             }
             k2 = NextEntry(j, depth);
             if (k2 == 0 || k2.list_together ~= j.list_together) jump Omit_WL2;
-            k2 = ZRegion(j.list_together);
-            if (k2 == 2 or 3) {
+            k2 = metaclass(j.list_together);
+            if (k2 == Routine or String) {
                 q = j; listing_size = 1; l = k; m = i;
                 while (m < n && q.list_together == j.list_together) {
                     m++;
@@ -362,24 +378,24 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
                 }
                 ! print " [", listing_size, "] ";
                 if (listing_size == 1) jump Omit_WL2;
-                if (c_style & INDENT_BIT ~= 0) Print__Spaces(2*(depth+wlf_indent));
-                if (k2 == 3) {
+                if (c_style & INDENT_BIT) Print__Spaces(2*(depth+wlf_indent));
+                if (k2 == String) {
                     q = 0;
                     for (l=0 : l<listing_size : l++) q = q+sizes_p->(l+i);
                     EnglishNumber(q); print " ";
                     print (string) j.list_together;
-                    if (c_style & ENGLISH_BIT ~= 0) print " (";
-                    if (c_style & INDENT_BIT ~= 0)  print ":^";
+                    if (c_style & ENGLISH_BIT) print " (";
+                    if (c_style & INDENT_BIT)  print ":^";
                 }
                 q = c_style;
-                if (k2 ~= 3) {
+                if (k2 ~= String) {
                     inventory_stage = 1;
                     parser_one = j; parser_two = depth+wlf_indent;
                     if (RunRoutines(j, list_together) == 1) jump Omit__Sublist2;
                 }
 
                 #Ifdef TARGET_ZCODE;
-                @push lt_value; @push listing_together; @push listing_size;
+                @push lt_value;    @push listing_together;    @push listing_size;
                 #Ifnot; ! TARGET_GLULX;
                 @copy lt_value sp; @copy listing_together sp; @copy listing_size sp;
                 #Endif; ! TARGET_;
@@ -395,8 +411,8 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
                 @copy sp lt_value;
                 #Endif; ! TARGET_;
 
-                if (k2 == 3) {
-                    if (q & ENGLISH_BIT ~= 0) print ")";
+                if (k2 == String) {
+                    if (q & ENGLISH_BIT) print ")";
                 }
                 else {
                     inventory_stage = 2;
@@ -406,7 +422,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
               .Omit__Sublist2;
 
-                if (q & NEWLINE_BIT ~= 0 && c_style & NEWLINE_BIT == 0) new_line;
+                if (q & NEWLINE_BIT && c_style & NEWLINE_BIT == 0) new_line;
                 c_style = q;
                 mr = j.list_together;
                 jump Omit_EL2;
@@ -415,15 +431,17 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
       .Omit_WL2;
 
-        if (WriteBeforeEntry(j, depth, -senc) == 1) jump Omit_FL2;
+        if (WriteBeforeEntry(j, depth, 0, senc) == 1) jump Omit_FL2;
         if (sizes_p->i == 1) {
-            if (c_style & NOARTICLE_BIT ~= 0) print (name) j;
+            if (c_style & NOARTICLE_BIT)  print (name) j;
             else {
-                if (c_style & DEFART_BIT ~= 0) print (the) j; else print (a) j;
+                if (c_style & DEFART_BIT) print (the) j;
+                else                      print (a) j;
             }
+            if (c_style & ID_BIT)         print " (", j, ")";
         }
         else {
-            if (c_style & DEFART_BIT ~= 0) PrefaceByArticle(j, 1, sizes_p->i);
+            if (c_style & DEFART_BIT) PrefaceByArticle(j, 1, sizes_p->i);
             print (number) sizes_p->i, " ";
             PrintOrRun(j, plural, 1);
         }
@@ -432,12 +450,14 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
             WriteAfterEntry(j, depth, stack_pointer);
             give j ~pluralname;
         }
-        else WriteAfterEntry(j,depth,stack_pointer);
+        else {
+            WriteAfterEntry(j,depth,stack_pointer);
+        }
       .Omit_EL2;
 
-        if (c_style & ENGLISH_BIT ~= 0) {
-            if (senc == 1) print (string) AND__TX;
-            if (senc > 1) print (string) COMMA__TX;
+        if (c_style & ENGLISH_BIT) {
+            if (senc == 1) print (SerialComma) i+senc, (string) AND__TX;
+            if (senc > 1)  print (string) COMMA__TX;
         }
      .Omit_FL2;
     }
@@ -460,21 +480,21 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
             }
             k = NextEntry(j, depth);
             if (k == 0 || k.list_together ~= j.list_together) jump Omit_WL;
-            k = ZRegion(j.list_together);
-            if (k == 2 or 3) {
-                if (c_style & INDENT_BIT ~= 0) Print__Spaces(2*(depth+wlf_indent));
-                if (k == 3) {
+            k = metaclass(j.list_together);
+            if (k == Routine or String) {
+                if (c_style & INDENT_BIT) Print__Spaces(2*(depth+wlf_indent));
+                if (k == String) {
                     q = j; l = 0;
                     do {
                         q = NextEntry(q, depth); l++;
                     } until (q == 0 || q.list_together ~= j.list_together);
                     EnglishNumber(l); print " ";
                     print (string) j.list_together;
-                    if (c_style & ENGLISH_BIT ~= 0) print " (";
-                    if (c_style & INDENT_BIT ~= 0) print ":^";
+                    if (c_style & ENGLISH_BIT) print " (";
+                    if (c_style & INDENT_BIT) print ":^";
                 }
                 q = c_style;
-                if (k ~= 3) {
+                if (k ~= String) {
                     inventory_stage = 1;
                     parser_one = j; parser_two = depth+wlf_indent;
                     if (RunRoutines(j, list_together) == 1) jump Omit__Sublist;
@@ -495,8 +515,8 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
                 @copy sp listing_size; @copy sp listing_together; @copy sp lt_value;
                 #Endif; ! TARGET_;
 
-                if (k == 3) {
-                    if (q & ENGLISH_BIT ~= 0) print ")";
+                if (k == String) {
+                    if (q & ENGLISH_BIT) print ")";
                 }
                 else {
                     inventory_stage = 2;
@@ -506,7 +526,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
               .Omit__Sublist;
 
-                if (q & NEWLINE_BIT ~= 0 && c_style & NEWLINE_BIT == 0) new_line;
+                if (q & NEWLINE_BIT && c_style & NEWLINE_BIT == 0) new_line;
                 c_style = q;
                 mr = j.list_together;
                 jump Omit_EL;
@@ -515,17 +535,19 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
       .Omit_WL;
 
-        if (WriteBeforeEntry(j, depth, i-senc) == 1) jump Omit_FL;
-        if (c_style & NOARTICLE_BIT ~= 0) print (name) j;
+        if (WriteBeforeEntry(j, depth, i, senc) == 1) jump Omit_FL;
+        if (c_style & NOARTICLE_BIT)  print (name) j;
         else {
-            if (c_style & DEFART_BIT ~= 0) print (the) j; else print (a) j;
+            if (c_style & DEFART_BIT) print (the) j;
+            else                      print (a) j;
         }
+        if (c_style & ID_BIT)         print " (", j, ")";
         WriteAfterEntry(j, depth, stack_pointer);
 
       .Omit_EL;
 
-        if (c_style & ENGLISH_BIT ~= 0) {
-            if (i == senc-1) print (string) AND__TX;
+        if (c_style & ENGLISH_BIT) {
+            if (i == senc-1) print (SerialComma) senc, (string) AND__TX;
             if (i < senc-1) print (string) COMMA__TX;
         }
 
@@ -534,17 +556,19 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     }
 ]; ! end of WriteListR
 
-[ WriteBeforeEntry o depth sentencepos
+[ WriteBeforeEntry o depth ipos sentencepos
     flag;
 
     inventory_stage = 1;
     if (c_style & INDENT_BIT) Print__Spaces(2*(depth+wlf_indent));
-    if (o.invent && (c_style & (PARTINV_BIT|FULLINV_BIT))) {    ! This line changed
+    if (o.invent && (c_style & (PARTINV_BIT|FULLINV_BIT))) {
         flag = PrintOrRun(o, invent, 1);
         if (flag) {
             if (c_style & ENGLISH_BIT) {
-                if (sentencepos == -1) print (string) AND__TX;
-                if (sentencepos <  -1) print (string) COMMA__TX;
+                if (ipos == sentencepos-1)
+                    print (SerialComma) sentencepos, (string) AND__TX;
+                if (ipos < sentencepos-1)
+                    print (string) COMMA__TX;
             }
             if (c_style & NEWLINE_BIT) new_line;
         }
@@ -557,8 +581,8 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
     inventory_stage = 2;
     if (c_style & PARTINV_BIT) {
-        if (o.invent && RunRoutines(o, invent))                 ! These lines
-            if (c_style & NEWLINE_BIT) ""; else rtrue;          ! added
+        if (o.invent && RunRoutines(o, invent))
+            if (c_style & NEWLINE_BIT) ""; else rtrue;
 
         combo = 0;
         if (o has light && location hasnt light) combo=combo+1;
@@ -572,7 +596,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
         if (o.invent && RunRoutines(o, invent))
             if (c_style & NEWLINE_BIT) ""; else rtrue;
 
-        if (o has light && o has worn) { L__M(##ListMiscellany, 8);     parenth_flag = true; }
+        if (o has light && o has worn) { L__M(##ListMiscellany, 8, o);  parenth_flag = true; }
         else {
             if (o has light)           { L__M(##ListMiscellany, 9, o);  parenth_flag = true; }
             if (o has worn)            { L__M(##ListMiscellany, 10, o); parenth_flag = true; }
@@ -656,6 +680,58 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ];
 
 ! ----------------------------------------------------------------------------
+! LoopWithinObject(rtn,obj,arg)
+!
+! rtn is the address of a user-supplied routine.
+! obj is an optional parent object whose dependents are to be processed; the
+! default is the current actor (normally the player).
+! arg is an optional argument passed to the rtn; this can be a single variable
+! or constant, or the address of an array (which enables multiple values to be
+! passed and returned).
+!
+! For each object o which is a child, grandchild, great-grandchild, etc, of the
+! original obj, LoopWithinObject() calls rtn(o,arg).
+!
+! The rtn should perform any appropriate testing or processing on each object o,
+! using the optional arg value if necessary. If the rtn returns true (or any
+! positive value), the children of o, if any, are also tested; those children
+! are skipped if rtn returns false. To terminate the loop before all objects
+! have been processed, rtn should return a large negative number (eg -99).
+!
+! To deal with supporters and open containers, so that objects are processed
+! only if they are accessible to the player, rtn might end with these
+! statements:
+!   if ((o has transparent or supporter) || (o has container && o has open)) rtrue;
+!   rfalse;
+! or alternatively with:
+!   c_style = RECURSE_BIT; return WillRecurs(o);
+!
+! LoopWithinObject() returns the number of objects which have been processed.
+! ----------------------------------------------------------------------------
+
+[ LoopWithinObject rtn obj arg
+    n o x y;
+    if (obj == 0) obj = actor;
+    o = child(obj);
+    while (o) {
+        y = parent(o); n++;
+        x = rtn(o, arg);    ! user-supplied routine returning x.
+                            ! if x < 0: skip up to next parent
+                            ! if x = 0: jump across to next sibling
+                            ! if x > 0: continue down to child objects
+        if (y ~= parent(o)) { RunTimeError(15, o); rfalse; }
+        if (x > 0 && child(o)) o = child(o);
+        else
+            while (o) {
+                if (++x > 0 && sibling(o)) { o = sibling(o); break; }
+                o = parent(o);
+                if (o == obj) return n;
+            }
+    }
+];
+
+
+! ----------------------------------------------------------------------------
 !  Much better menus can be created using one of the optional library
 !  extensions.  These are provided for compatibility with previous practice:
 ! ----------------------------------------------------------------------------
@@ -666,12 +742,12 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
   .LKRD;
 
     menu_item = 0;
-    lines = indirect(EntryR);
+    lines = EntryR();
     main_title = item_name;
 
     print "--- "; print (string) main_title; print " ---^^";
 
-    if (menu_choices ofclass Routine) menu_choices.call();
+    if (menu_choices ofclass Routine) menu_choices();
     else                              print (string) menu_choices;
 
     for (::) {
@@ -700,7 +776,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
         if (i == 0) jump LKRD;
         if (i < 1 || i > lines) continue;
         menu_item = i;
-        j = indirect(ChoiceR);
+        j = ChoiceR();
         if (j == 2) jump LKRD;
         if (j == 3) rfalse;
     }
@@ -721,7 +797,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     if (pretty_flag == 0) return LowKey_Menu(menu_choices, EntryR, ChoiceR);
     menu_nesting++;
     menu_item = 0;
-    lines = indirect(EntryR);
+    lines = EntryR();
     main_title = item_name; main_wid = item_width;
     cl = 7;
 
@@ -767,7 +843,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     @set_cursor y x; font off;
 
     if (menu_choices ofclass String) print (string) menu_choices;
-    else                             menu_choices.call();
+    else                             menu_choices();
 
     x = 1+3*cw;
     for (::) {
@@ -792,7 +868,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
             new_line; new_line; new_line;
 
             menu_item = cl-6;
-            EntryR.call();
+            EntryR();
 
             @erase_window $ffff;
             @split_window ch;
@@ -803,7 +879,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
             print (string) item_name;
             style roman; @set_window 0; new_line;
 
-            i = ChoiceR.call();
+            i = ChoiceR();
             if (i == 2) jump ReDisplay;
             if (i == 3) break;
 
@@ -833,7 +909,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
     menu_nesting++;
     menu_item = 0;
-    lines = indirect(EntryR);
+    lines = EntryR();
     main_title = item_name;
     main_wid = item_width;
 
@@ -869,7 +945,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
     glk($002B, gg_statuswin, 1, 4); ! window_move_cursor
     if (menu_choices ofclass String) print (string) menu_choices;
-    else                             menu_choices.call();
+    else                             menu_choices();
 
     oldcl = -1;
 
@@ -901,7 +977,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
             glk($002F, gg_mainwin); ! set_window
             new_line; new_line; new_line;
             menu_item = cl+1;
-            EntryR.call();
+            EntryR();
 
             glk($002A, gg_statuswin); ! window_clear
             glk($002A, gg_mainwin); ! window_clear
@@ -917,7 +993,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
             glk($002F, gg_mainwin); ! set_window
             new_line;
-            i = ChoiceR.call();
+            i = ChoiceR();
             if (i == 2) jump ReDisplay;
             if (i == 3) break;
             L__M(##Miscellany, 53);
@@ -947,21 +1023,25 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     if (location == player or nothing) return;
     objectloop (i) {
         address = i.&found_in;
-        if (address ~= 0 && i hasnt absent && ~~IndirectlyContains(player, i)) {
-            if (ZRegion(address-->0) == 2) {
-                if (i.found_in() ~= 0) move i to location;
-                else                   remove i;
-            }
+        if (address && i hasnt non_floating && ~~IndirectlyContains(player, i)) {
+            if (metaclass(address-->0) == Routine)
+                flag = i.found_in();
             else {
-                k = i.#found_in;
-                for (l=0 : l<k/WORDSIZE : l++) {
+                flag = false;
+                k = i.#found_in/WORDSIZE;
+                for (l=0 : l<k : l++) {
                     m = address-->l;
-                    if (m == location || m in location) {
-                        if (i notin location) move i to location;
+                    if ((m in Class && location ofclass m) ||
+                            m == location || m in location) {
                         flag = true;
+                        break;
                     }
                 }
-                if (flag == false) { if (parent(i)) remove i; }
+            }
+            if (flag) {
+                if (i notin location) move i to location;
+            } else {
+                if (parent(i)) remove i;
             }
         }
     }
@@ -972,14 +1052,16 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ! ----------------------------------------------------------------------------
 
 [ PlayerTo newplace flag;
+    NoteDeparture();
     move player to newplace;
-    while (parent(newplace) ~= 0) newplace = parent(newplace);
-    location = newplace;
-    real_location = location; MoveFloatingObjects();
-    AdjustLight(1);
-    if (flag == 0) <Look>;
-    if (flag == 1) { NoteArrival(); ScoreArrival(); }
-    if (flag == 2) LookSub(1);
+    while (parent(newplace)) newplace = parent(newplace);
+    location = real_location = newplace;
+    MoveFloatingObjects(); AdjustLight(1);
+    switch (flag) {
+      0:    <Look>;
+      1:    NoteArrival(); ScoreArrival();
+      2:    LookSub(1);
+    }
 ];
 
 [ MovePlayer direc; <Go direc>; <Look>; ];
@@ -988,20 +1070,23 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 !   The handy YesOrNo routine, and some "meta" verbs
 ! ----------------------------------------------------------------------------
 
-[ YesOrNo i j;
+[ YesOrNo noStatusRedraw
+    i j;
     for (::) {
         #Ifdef TARGET_ZCODE;
-        if (location == nothing || parent(player) == nothing) read buffer parse;
+        if (location == nothing || parent(player) == nothing || noStatusRedraw)
+            read buffer parse;
         else read buffer parse DrawStatusLine;
         j = parse->1;
         #Ifnot; ! TARGET_GLULX;
+        noStatusRedraw = 0; ! suppress warning
         KeyboardPrimitive(buffer, parse);
         j = parse-->0;
         #Endif; ! TARGET_
         if (j) { ! at least one word entered
             i = parse-->1;
             if (i == YES1__WD or YES2__WD or YES3__WD) rtrue;
-            if (i == NO1__WD or NO2__WD or NO3__WD) rfalse;
+            if (i == NO1__WD  or NO2__WD  or NO3__WD) rfalse;
         }
         L__M(##Quit, 1); print "> ";
     }
@@ -1009,11 +1094,14 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 #Ifdef TARGET_ZCODE;
 
-[ QuitSub; L__M(##Quit, 2); if (YesOrNo() ~= 0) quit; ];
+[ QuitSub;
+    L__M(##Quit, 2);
+    if (YesOrNo()) quit;
+];
 
 [ RestartSub;
-    L__M(##Restart,1);
-    if (YesOrNo() ~= 0) { @restart; L__M(##Restart, 2); }
+    L__M(##Restart, 1);
+    if (YesOrNo()) { @restart; L__M(##Restart, 2); }
 ];
 
 [ RestoreSub;
@@ -1038,7 +1126,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     return L__M(##Save, 1);
   .SMaybe;
     L__M(##Save, 2);
-    #Endif; ! V
+    #Endif; ! V5
 ];
 
 [ VerifySub;
@@ -1090,15 +1178,12 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ QuitSub;
     L__M(##Quit, 2);
-    if (YesOrNo() ~= 0) quit;
+    if (YesOrNo()) quit;
 ];
 
 [ RestartSub;
     L__M(##Restart,1);
-    if (YesOrNo() ~= 0) {
-        @restart;
-        L__M(##Restart, 2);
-    }
+    if (YesOrNo()) { @restart; L__M(##Restart, 2); }
 ];
 
 [ RestoreSub res fref;
@@ -1145,7 +1230,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ];
 
 [ ScriptOnSub;
-    if (gg_scriptstr ~= 0) return L__M(##ScriptOn, 1);
+    if (gg_scriptstr) return L__M(##ScriptOn, 1);
     if (gg_scriptfref == 0) {
         ! fileref_create_by_prompt
         gg_scriptfref = glk($0062, $102, $05, GG_SCRIPTFREF_ROCK);
@@ -1170,12 +1255,9 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ];
 
 [ CommandsOnSub fref;
-    if (gg_commandstr ~= 0) {
-        if (gg_command_reading)
-            L__M(##CommandsOn, 2);
-        else
-            L__M(##CommandsOn, 3);
-        return;
+    if (gg_commandstr) {
+        if (gg_command_reading) return L__M(##CommandsOn, 2);
+        else                    return L__M(##CommandsOn, 3);
     }
     ! fileref_create_by_prompt
     fref = glk($0062, $103, $01, 0);
@@ -1190,7 +1272,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ CommandsOffSub;
     if (gg_commandstr == 0) return L__M(##CommandsOff, 2);
-    if (gg_command_reading) return L__M(##CommandsRead, 5); ! was L__M(##CommandsOn, 2);
+    if (gg_command_reading) return L__M(##CommandsRead, 5);
     glk($0044, gg_commandstr, 0); ! stream_close
     gg_commandstr = 0;
     gg_command_reading = false;
@@ -1198,12 +1280,9 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ];
 
 [ CommandsReadSub fref;
-    if (gg_commandstr ~= 0) {
-        if (gg_command_reading)
-            L__M(##CommandsRead, 2);
-        else
-            L__M(##CommandsRead, 3);
-        return;
+    if (gg_commandstr) {
+        if (gg_command_reading) return L__M(##CommandsRead, 2);
+        else                    return L__M(##CommandsRead, 3);
     }
     ! fileref_create_by_prompt
     fref = glk($0062, $103, $02, 0);
@@ -1213,21 +1292,21 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     gg_commandstr = glk($0042, fref, $02, GG_COMMANDRSTR_ROCK);
     glk($0063, fref); ! fileref_destroy
     if (gg_commandstr == 0) return L__M(##CommandsRead, 4);
-    return L__M(##CommandsRead, 1);
+    L__M(##CommandsRead, 1);
 ];
 
 #Endif; ! TARGET_;
 
-[ NotifyOnSub;  notify_mode = 1; L__M(##NotifyOn);  ];
-[ NotifyOffSub; notify_mode = 0; L__M(##NotifyOff); ];
+[ NotifyOnSub;  notify_mode = true; L__M(##NotifyOn);  ];
+[ NotifyOffSub; notify_mode = false; L__M(##NotifyOff); ];
 
 [ Places1Sub i j k;
     L__M(##Places, 1);
     objectloop (i has visited) j++;
     objectloop (i has visited) {
         print (name) i; k++;
-        if (k == j) { L__M(##Places, 2); return; }
-        if (k == j-1) print (string) AND__TX;
+        if (k == j) return L__M(##Places, 2);
+        if (k == j-1) print (SerialComma) j, (string) AND__TX;
         else          print (string) COMMA__TX;
     }
 ];
@@ -1238,17 +1317,17 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
        f = 1; print (the) i; j = parent(i);
         if (j) {
            if (j == player) {
-               if (i has worn) L__M(##Objects, 3);
-               else            L__M(##Objects, 4);
+               if (i has worn) L__M(##Objects, 3, j, i);
+               else            L__M(##Objects, 4, j, i);
                 jump Obj__Ptd;
             }
-            if (j has animate)   { L__M(##Objects, 5);    jump Obj__Ptd; }
-            if (j has visited)   { L__M(##Objects, 6, j); jump Obj__Ptd; }
-            if (j has container) { L__M(##Objects, 8, j); jump Obj__Ptd; }
-            if (j has supporter) { L__M(##Objects, 9, j); jump Obj__Ptd; }
-            if (j has enterable) { L__M(##Objects, 7, j); jump Obj__Ptd; }
+            if (j has animate)   { L__M(##Objects, 5, j, i); jump Obj__Ptd; }
+            if (j has visited)   { L__M(##Objects, 6, j, i); jump Obj__Ptd; }
+            if (j has container) { L__M(##Objects, 8, j, i); jump Obj__Ptd; }
+            if (j has supporter) { L__M(##Objects, 9, j, i); jump Obj__Ptd; }
+            if (j has enterable) { L__M(##Objects, 7, j, i); jump Obj__Ptd; }
         }
-        L__M(##Objects, 10);
+        L__M(##Objects, 10, j, i);
 
       .Obj__Ptd;
 
@@ -1265,8 +1344,9 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     #Ifdef NO_SCORE;
     if (deadflag == 0) L__M(##Score, 2);
     #Ifnot;
+    if (deadflag) new_line;
     L__M(##Score, 1);
-    PrintRank();
+    if(PrintRank() == false) LibraryExtensions.RunAll(ext_printrank);
     #Endif; ! NO_SCORE
 ];
 
@@ -1304,13 +1384,14 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     for (i=0 : i<NUMBER_TASKS : i++)
         if (task_done->i == 1) {
             PANum(TaskScore(i));
-            PrintTaskName(i);
+            if(PrintTaskName(i) == false)
+                LibraryExtensions.RunAll(ext_printtaskname,i);
         }
-    if (things_score ~= 0) {
+    if (things_score) {
         PANum(things_score);
         L__M(##FullScore, 2);
     }
-    if (places_score ~= 0) {
+    if (places_score) {
         PANum(places_score);
         L__M(##FullScore, 3);
     }
@@ -1322,24 +1403,33 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ! ----------------------------------------------------------------------------
 
 [ InvWideSub;
-    inventory_style = ENGLISH_BIT+RECURSE_BIT+FULLINV_BIT;
-    <Inv>;
+    if (actor == player)
+        inventory_style = ENGLISH_BIT+FULLINV_BIT+RECURSE_BIT;
+    else
+        inventory_style = ENGLISH_BIT+PARTINV_BIT;
+    <Inv, actor>;
+    inventory_style = 0;
 ];
 
 [ InvTallSub;
-    inventory_style = NEWLINE_BIT+RECURSE_BIT+INDENT_BIT+FULLINV_BIT;
-    <Inv>;
+    if (actor == player)
+        inventory_style = NEWLINE_BIT+INDENT_BIT+FULLINV_BIT+RECURSE_BIT;
+    else
+        inventory_style = NEWLINE_BIT+INDENT_BIT+PARTINV_BIT;
+    <Inv, actor>;
+    inventory_style = 0;
 ];
 
 [ InvSub x;
-    if (child(player) == 0) return L__M(##Inv, 1);
-    if (inventory_style == 0) return InvTallSub();
-
+    if (child(actor) == 0)   return L__M(##Inv, 1);
+    if (inventory_style == 0)
+        if (actor == player) return InvTallSub();
+        else                 return InvWideSub();
     L__M(##Inv, 2);
-    if (inventory_style & NEWLINE_BIT ~= 0) L__M(##Inv, 3); else print " ";
+    if (inventory_style & NEWLINE_BIT) L__M(##Inv, 3); else print " ";
 
-    WriteListFrom(child(player), inventory_style, 1);
-    if (inventory_style & ENGLISH_BIT ~= 0) L__M(##Inv, 4);
+    WriteListFrom(child(actor), inventory_style, 1);
+    if (inventory_style & ENGLISH_BIT) L__M(##Inv, 4);
 
     #Ifndef MANUAL_PRONOUNS;
     objectloop (x in player) PronounNotice(x);
@@ -1356,9 +1446,9 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     ! Find the nearest object indirectly containing o1 and o2,
     ! or return 0 if there is no common ancestor.
     i = o1;
-    while (i ~= 0) {
+    while (i) {
         j = o2;
-        while (j ~= 0) {
+        while (j) {
             if (j == i) return i;
             j = parent(j);
         }
@@ -1369,7 +1459,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ IndirectlyContains o1 o2;
     ! Does o1 indirectly contain o2?  (Same as testing if their common ancestor is o1.)
-    while (o2 ~= 0) {
+    while (o2) {
         if (o1 == o2) rtrue;
         if (o2 ofclass Class) rfalse;
         o2 = parent(o2);
@@ -1390,7 +1480,7 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ];
 
 [ ObjectIsUntouchable item flag1 flag2 ancestor i;
-    ! Determine if there's any barrier preventing the player from moving
+    ! Determine if there's any barrier preventing the actor from moving
     ! things to "item".  Return false if no barrier; otherwise print a
     ! suitable message and return true.
     ! If flag1 is set, do not print any message.
@@ -1399,28 +1489,28 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     ! If the item has been added to scope by something, it's first necessary
     ! for that something to be touchable.
 
-    ancestor = CommonAncestor(player, item);
+    ancestor = CommonAncestor(actor, item);
     if (ancestor == 0) {
         ancestor = item;
         while (ancestor && (i = ObjectScopedBySomething(ancestor)) == 0)
             ancestor = parent(ancestor);
-        if (i ~= 0) {
+        if (i) {
             if (ObjectIsUntouchable(i, flag1, flag2)) return;
             ! An item immediately added to scope
         }
     }
     else
 
-    ! First, a barrier between the player and the ancestor.  The player
+    ! First, a barrier between the actor and the ancestor.  The actor
     ! can only be in a sequence of enterable objects, and only closed
     ! containers form a barrier.
 
-    if (player ~= ancestor) {
-        i = parent(player);
+    if (actor ~= ancestor) {
+        i = parent(actor);
         while (i ~= ancestor) {
             if (i has container && i hasnt open) {
                 if (flag1) rtrue;
-                return L__M(##Take, 9, i);
+                return L__M(##Take, 9, i, noun);
             }
             i = parent(i);
         }
@@ -1430,24 +1520,24 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     ! be carried by someone, part of a piece of machinery, in or on top
     ! of something and so on.
 
-    if (item ~= ancestor) {
-        i = parent(item);
+    i = parent(item);
+    if (item ~= ancestor && i ~= player) {
         while (i ~= ancestor) {
             if (flag2 && i hasnt container && i hasnt supporter) {
                 if (i has animate) {
                     if (flag1) rtrue;
-                    return L__M(##Take, 6, i);
+                    return L__M(##Take, 6, i, noun);
                 }
                 if (i has transparent) {
                     if (flag1) rtrue;
-                    return L__M(##Take, 7, i);
+                    return L__M(##Take, 7, i, noun);
                 }
                 if (flag1) rtrue;
-                return L__M(##Take, 8, item);
+                return L__M(##Take, 8, item, noun);
             }
             if (i has container && i hasnt open) {
                 if (flag1) rtrue;
-                return L__M(##Take, 9, i);
+                return L__M(##Take, 9, i, noun);
             }
             i = parent(i);
         }
@@ -1455,42 +1545,43 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     rfalse;
 ];
 
-[ AttemptToTakeObject item     ancestor after_recipient i j k;
-    ! Try to transfer the given item to the player: return false
+[ AttemptToTakeObject item
+    ancestor after_recipient i k;
+    ! Try to transfer the given item to the actor: return false
     ! if successful, true if unsuccessful, printing a suitable message
     ! in the latter case.
     ! People cannot ordinarily be taken.
-    if (item == player) return L__M(##Take, 2);
+    if (item == actor) return L__M(##Take, 2, noun);
     if (item has animate) return L__M(##Take, 3, item);
 
-    ancestor = CommonAncestor(player, item);
+    ancestor = CommonAncestor(actor, item);
 
     if (ancestor == 0) {
         i = ObjectScopedBySomething(item);
-        if (i ~= 0) ancestor = CommonAncestor(player, i);
+        if (i) ancestor = CommonAncestor(actor, i);
     }
 
-    ! Is the player indirectly inside the item?
+    ! Is the actor indirectly inside the item?
     if (ancestor == item) return L__M(##Take, 4, item);
 
-    ! Does the player already directly contain the item?
-    if (item in player) return L__M(##Take, 5, item);
+    ! Does the actor already directly contain the item?
+    if (item in actor) return L__M(##Take, 5, item);
 
-    ! Can the player touch the item, or is there (e.g.) a closed container
+    ! Can the actor touch the item, or is there (e.g.) a closed container
     ! in the way?
-    if (ObjectIsUntouchable(item, false, true)) return;
+    if (ObjectIsUntouchable(item, false, true)) rtrue;
 
     ! The item is now known to be accessible.
 
     ! Consult the immediate possessor of the item, if it's in a container
-    ! which the player is not in.
+    ! which the actor is not in.
 
     i = parent(item);
-    if (i ~= ancestor && (i has container || i has supporter)) {
+    if (i && i ~= ancestor && (i has container or supporter)) {
         after_recipient = i;
         k = action; action = ##LetGo;
-        if (RunRoutines(i, before) ~= 0) { action = k; rtrue; }
-        action=k;
+        if (RunRoutines(i, before)) { action = k; rtrue; }
+        action = k;
     }
 
     if (item has scenery) return L__M(##Take, 10, item);
@@ -1500,85 +1591,195 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     ! carrying too much?  If so, possibly juggle items into the rucksack
     ! to make room.
 
-    k = 0; objectloop (j in player) if (j hasnt worn) k++;
-
-    if (k >= ValueOrRun(player, capacity)) {
-        if (SACK_OBJECT ~= 0) {
-            if (parent(SACK_OBJECT) ~= player)
-                return L__M(##Take, 12);
-            j = 0;
-            objectloop (k in player)
-                if (k ~= SACK_OBJECT && k hasnt worn && k hasnt light) j = k;
-
-            if (j ~= 0) {
-                L__M(##Take, 13, j);
-                keep_silent = 1; <Insert j SACK_OBJECT>; keep_silent = 0;
-                if (j notin SACK_OBJECT) rtrue;
-            }
-            else return L__M(##Take, 12);
-        }
-        else return L__M(##Take, 12);
-    }
+    if (ObjectDoesNotFit(item, actor) ||
+        LibraryExtensions.RunWhile(ext_objectdoesnotfit, false, item, actor)) return;
+    if (AtFullCapacity(item, actor)) return L__M(##Take, 12, item);
 
     ! Transfer the item.
 
-    move item to player;
+    move item to actor; give item ~worn;
 
     ! Send "after" message to the object letting go of the item, if any.
 
-    if (after_recipient ~= 0) {
+    if (after_recipient) {
         k = action; action = ##LetGo;
-        if (RunRoutines(after_recipient, after) ~= 0) { action = k; rtrue; }
-        action=k;
+        if (RunRoutines(after_recipient, after)) { action = k; rtrue; }
+        action = k;
     }
     rfalse;
 ];
+
+[ AtFullCapacity n s
+    obj k;
+    n = n; ! suppress compiler warning
+    if (s == actor) objectloop (obj in s) if (obj hasnt worn) k++;
+    else            k = children(s);
+    if (k < RunRoutines(s, capacity) || (s == player && RoomInSack())) rfalse;
+];
+
+[ RoomInSack
+    obj ks;
+    if (SACK_OBJECT && SACK_OBJECT in player) {
+        ks = keep_silent; keep_silent = 2;
+        for (obj=youngest(player) : obj : obj=elder(obj))
+            if (obj ~= SACK_OBJECT && obj hasnt worn or light) {
+                <Insert obj SACK_OBJECT>;
+                if (obj in SACK_OBJECT) {
+                    keep_silent = ks;
+                    return L__M(##Take, 13, obj, SACK_OBJECT);
+                }
+            }
+        keep_silent = ks;
+    }
+    rfalse;
+];
+
+! ----------------------------------------------------------------------------
+!   Support for implicit actions
+! ----------------------------------------------------------------------------
+
+[ CheckImplicitAction act o1 o2
+    sav_act sav_noun sav_sec res;
+    if (o1 provides before_implicit) {
+        sav_act  = action; action = act;
+        sav_noun = noun;   noun   = o1;
+        if (o2) { sav_sec  = second; second = o2; }
+        res = RunRoutines(o1, before_implicit);
+        action = sav_act; noun = sav_noun;
+        if (sav_sec) second = sav_sec;
+    }
+    else {
+	if (no_implicit_actions)
+            res = 2;
+        else
+            res = 0;
+    }
+    return res;
+];
+
+[ ImplicitTake obj
+    res ks supcon;
+    if (obj in actor) rfalse;
+    if (action_to_be == ##Drop) rfalse;
+    res = CheckImplicitAction(##Take, obj);
+    ! 0 = Take object, Tell the user (normal default)
+    ! 1 = Take object, don't Tell
+    ! 2 = don't Take object          (default with no_implicit_actions)
+    if (res == 2) rtrue;
+    if (parent(obj) && parent(obj) has container or supporter) supcon = parent(obj);
+    ks = keep_silent; keep_silent = 2; AttemptToTakeObject(obj); keep_silent = ks;
+    if (obj notin actor) rtrue;
+    if (res == 0 && ~~keep_silent)
+        if (supcon) L__M(##Miscellany, 58, obj, supcon);
+        else        L__M(##Miscellany, 26, obj);
+    rfalse;
+];
+
+[ ImplicitExit obj
+    res ks;
+    if (parent(obj) == nothing) rfalse;
+    res = CheckImplicitAction(##Exit, obj);
+    ! 0 = Exit object, Tell the user (normal default)
+    ! 1 = Exit object, don't Tell
+    ! 2 = don't Exit object          (default with no_implicit_actions)
+    if (res == 2) rtrue;
+    ks = keep_silent; keep_silent = 2; <Exit obj, actor>; keep_silent = ks;
+    if (parent(actor) == obj) rtrue;
+    if (res == 0 && ~~keep_silent) L__M(##Exit, 5, obj);
+    rfalse;
+];
+
+[ ImplicitClose obj
+    res ks;
+    if (obj hasnt open) rfalse;
+    res = CheckImplicitAction(##Close, obj);
+    ! 0 = Close object, Tell the user (normal default)
+    ! 1 = Close object, don't Tell
+    ! 2 = don't Close object          (default with no_implicit_actions)
+    if (res == 2) rtrue;
+    ks = keep_silent; keep_silent = 2; <Close obj, actor>; keep_silent = ks;
+    if (obj has open) rtrue;
+    if (res == 0 && ~~keep_silent) L__M(##Close, 4, obj);
+    rfalse;
+];
+
+[ ImplicitOpen obj
+    res ks;
+    if (obj has open) rfalse;
+    res = CheckImplicitAction(##Open, obj);
+    ! 0 = Open object, Tell the user (normal default)
+    ! 1 = Open object, don't Tell
+    ! 2 = don't Open object          (default with no_implicit_actions)
+    if (res == 2) rtrue;
+    if (obj has locked) rtrue;
+    ks = keep_silent; keep_silent = 2; <Open obj, actor>; keep_silent = ks;
+    if (obj hasnt open) rtrue;
+    if (res == 0 && ~~keep_silent) L__M(##Open, 6, obj);
+    rfalse;
+];
+
+[ ImplicitUnlock obj;
+    if (obj has locked) rtrue;
+    rfalse;
+];
+
+[ ImplicitDisrobe obj
+    res ks;
+    if (obj hasnt worn) rfalse;
+    res = CheckImplicitAction(##Disrobe, obj);
+    ! 0 = Take off object, Tell the user (normal default)
+    ! 1 = Take off object, don't Tell
+    ! 2 = don't Take off object          (default with no_implicit_actions)
+    if (res == 2) rtrue;
+    ks = keep_silent; keep_silent = 1; <Disrobe obj, actor>; keep_silent = ks;
+    if (obj has worn && obj in actor) rtrue;
+    if (res == 0 && ~~keep_silent) L__M(##Drop, 3, noun);
+    rfalse;
+];
+
 
 ! ----------------------------------------------------------------------------
 !   Object movement verbs
 ! ----------------------------------------------------------------------------
 
 [ TakeSub;
-    if (onotheld_mode == 0 || noun notin player)
-        if (AttemptToTakeObject(noun)) rtrue;
-    if (AfterRoutines() == 1) rtrue;
+    if (onotheld_mode == 0 || noun notin actor)
+        if (AttemptToTakeObject(noun)) return;
+    if (AfterRoutines()) return;
     notheld_mode = onotheld_mode;
-    if (notheld_mode == 1 || keep_silent == 1) rtrue;
-    L__M(##Take, 1);
+    if (notheld_mode == 1 || keep_silent) return;
+    L__M(##Take, 1, noun);
 ];
 
 [ RemoveSub i;
     i = parent(noun);
-    if (i has container && i hasnt open) return L__M(##Remove, 1, noun);
-    if (i ~= second) return L__M(##Remove, 2, noun);
-    if (i has animate) return L__M(##Take, 6, i);
+    if (i && i has container && i hasnt open && ImplicitOpen(i)) return L__M(##Remove, 1, noun);
+    if (i ~= second)   return L__M(##Remove, 2, noun);
+    if (i has animate) return L__M(##Take, 6, i, noun);
+
     if (AttemptToTakeObject(noun)) rtrue;
-    action = ##Remove; if (AfterRoutines() == 1) rtrue;
-    action = ##Take;   if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
-    return L__M(##Remove, 3, noun);
+
+    action = ##Remove; if (AfterRoutines()) return;
+    action = ##Take;   if (AfterRoutines()) return;
+    if (keep_silent) return;
+    L__M(##Remove, 3, noun);
 ];
 
 [ DropSub;
-    if (noun == player) return L__M(##PutOn, 4);
-    if (noun in parent(player)) return L__M(##Drop, 1, noun);
-    if (noun notin player) return L__M(##Drop, 2, noun);
-    if (noun has worn) {
-        L__M(##Drop, 3, noun);
-        <Disrobe noun>;
-        if (noun has worn && noun in player) rtrue;
-    }
-    move noun to parent(player);
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
-    return L__M(##Drop, 4, noun);
+    if (noun == actor)         return L__M(##PutOn, 4, noun);
+    if (noun in parent(actor)) return L__M(##Drop, 1, noun);
+    if (noun notin actor && ImplicitTake(noun)) return L__M(##Drop, 2, noun);
+    if (noun has worn && ImplicitDisrobe(noun)) return;
+    move noun to parent(actor);
+    if (AfterRoutines() || keep_silent) return;
+    L__M(##Drop, 4, noun);
 ];
 
 [ PutOnSub ancestor;
     receive_action = ##PutOn;
-    if (second == d_obj || player in second) <<Drop noun>>;
-    if (parent(noun) == second) return L__M(##Drop,1,noun);
-    if (parent(noun) ~= player) return L__M(##PutOn, 1, noun);
+    if (second == d_obj || actor in second) <<Drop noun, actor>>;
+    if (parent(noun) == second) return L__M(##Drop, 1, noun);
+    if (noun notin actor && ImplicitTake(noun)) return L__M(##PutOn, 1, noun);
 
     ancestor = CommonAncestor(noun, second);
     if (ancestor == noun) return L__M(##PutOn, 2, noun);
@@ -1586,70 +1787,63 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
     if (second ~= ancestor) {
         action = ##Receive;
-        if (RunRoutines(second, before) ~= 0) { action = ##PutOn; return; }
+        if (RunRoutines(second, before)) { action = ##PutOn; return; }
         action = ##PutOn;
     }
     if (second hasnt supporter) return L__M(##PutOn, 3, second);
-    if (ancestor == player) return L__M(##PutOn, 4);
-    if (noun has worn) {
-        L__M(##PutOn, 5, noun); <Disrobe noun>; if (noun has worn) return;
-    }
+    if (ancestor == actor)      return L__M(##PutOn, 4, second);
+    if (noun has worn && ImplicitDisrobe(noun)) return;
 
-    if (children(second) >= ValueOrRun(second, capacity))
-        return L__M(##PutOn, 6, second);
+    if (ObjectDoesNotFit(noun, second) ||
+        LibraryExtensions.RunWhile(ext_objectdoesnotfit, false, noun, second)) return;
+    if (AtFullCapacity(noun, second)) return L__M(##PutOn, 6, second);
 
     move noun to second;
 
-    if (AfterRoutines() == 1) return;
+    if (AfterRoutines()) return;
 
     if (second ~= ancestor) {
         action = ##Receive;
-        if (RunRoutines(second, after) ~= 0) { action = ##PutOn; return; }
+        if (RunRoutines(second, after)) { action = ##PutOn; return; }
         action = ##PutOn;
     }
-    if (keep_silent == 1) return;
-    if (multiflag == 1) return L__M(##PutOn, 7);
-    L__M(##PutOn, 8, noun);
+    if (keep_silent) return;
+    if (multiflag) return L__M(##PutOn, 7);
+    L__M(##PutOn, 8, noun, second);
 ];
 
 [ InsertSub ancestor;
     receive_action = ##Insert;
-    if (second == d_obj || player in second) <<Drop noun>>;
-    if (parent(noun) == second) return L__M(##Drop,1,noun);
-    if (parent(noun) ~= player) return L__M(##Insert, 1, noun);
-
+    if (second == d_obj || actor in second) <<Drop noun, actor>>;
+    if (parent(noun) == second) return L__M(##Drop, 1, noun);
+    if (noun notin actor && ImplicitTake(noun)) return L__M(##Insert, 1, noun);
     ancestor = CommonAncestor(noun, second);
     if (ancestor == noun) return L__M(##Insert, 5, noun);
     if (ObjectIsUntouchable(second)) return;
-
     if (second ~= ancestor) {
         action = ##Receive;
-        if (RunRoutines(second,before) ~= 0) { action = ##Insert; rtrue; }
+        if (RunRoutines(second,before)) { action = ##Insert; rtrue; }
         action = ##Insert;
-        if (second has container && second hasnt open)
+        if (second has container && second hasnt open && ImplicitOpen(second))
             return L__M(##Insert, 3, second);
     }
     if (second hasnt container) return L__M(##Insert, 2, second);
+    if (noun has worn && ImplicitDisrobe(noun)) return;
 
-    if (noun has worn) {
-        L__M(##Insert, 6, noun); <Disrobe noun>; if (noun has worn) return;
-    }
-
-    if (children(second) >= ValueOrRun(second, capacity))
-        return L__M(##Insert, 7, second);
+    if (ObjectDoesNotFit(noun, second) ||
+        LibraryExtensions.RunWhile(ext_objectdoesnotfit, false, noun, second)) return;
+    if (AtFullCapacity(noun, second)) return L__M(##Insert, 7, second);
 
     move noun to second;
 
-    if (AfterRoutines() == 1) rtrue;
-
     if (second ~= ancestor) {
         action = ##Receive;
-        if (RunRoutines(second, after) ~= 0) { action = ##Insert; rtrue; }
+        if (RunRoutines(second, after)) { action = ##Insert; rtrue; }
         action = ##Insert;
     }
-    if (keep_silent == 1) rtrue;
-    if (multiflag == 1) return L__M(##Insert, 8, noun);
-    L__M(##Insert, 9, noun);
+    if (keep_silent) rtrue;
+    if (multiflag) return L__M(##Insert, 8, noun);
+    L__M(##Insert, 9, noun, second);
 ];
 
 ! ----------------------------------------------------------------------------
@@ -1657,43 +1851,44 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ! ----------------------------------------------------------------------------
 
 [ TransferSub;
-    if (noun notin player && AttemptToTakeObject(noun)) return;
-    if (second has supporter) <<PutOn noun second>>;
-    if (second == d_obj) <<Drop noun>>;
-    <<Insert noun second>>;
+    if (noun notin actor && AttemptToTakeObject(noun)) return;
+    if (second has supporter) <<PutOn noun second, actor>>;
+    if (second == d_obj) <<Drop noun, actor>>;
+    <<Insert noun second, actor>>;
 ];
 
 [ EmptySub; second = d_obj; EmptyTSub(); ];
 
 [ EmptyTSub i j k flag;
-    if (noun == second) return L__M(##EmptyT, 4);
+    if (noun == second) return L__M(##EmptyT, 4, noun);
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt container) return L__M(##EmptyT, 1, noun);
-    if (noun hasnt open) return L__M(##EmptyT, 2, noun);
+    if (noun hasnt open && ImplicitOpen(noun)) return L__M(##EmptyT, 2, noun);
     if (second ~= d_obj) {
         if (second hasnt supporter) {
             if (second hasnt container) return L__M(##EmptyT, 1, second);
-            if (second hasnt open) return L__M(##EmptyT, 2, second);
+            if (second hasnt open && ImplicitOpen(second))
+                return L__M(##EmptyT, 2, second);
         }
     }
     i = child(noun); k = children(noun);
     if (i == 0) return L__M(##EmptyT, 3, noun);
-    while (i ~= 0) {
+    while (i) {
         j = sibling(i);
-        flag = 0;
-        if (ObjectIsUntouchable(noun)) flag = 1;
-        if (noun hasnt container) flag = 1;
-        if (noun hasnt open) flag = 1;
+        flag = false;
+        if (ObjectIsUntouchable(noun)) flag = true;
+        if (noun hasnt container) flag = true;
+        if (noun hasnt open) flag = true;
         if (second ~= d_obj) {
             if (second hasnt supporter) {
-                if (second hasnt container) flag = 1;
-                if (second hasnt open) flag = 1;
+                if (second hasnt container) flag = true;
+                if (second hasnt open) flag = true;
             }
         }
         if (k-- == 0) flag = 1;
         if (flag) break;
         if (keep_silent == 0) print (name) i, ": ";
-        <Transfer i second>;
+        <Transfer i second, actor>;
         i = j;
     }
 ];
@@ -1703,102 +1898,117 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 ! ----------------------------------------------------------------------------
 
 [ GiveSub;
-    if (parent(noun) ~= player) return L__M(##Give, 1, noun);
-    if (second == player)  return L__M(##Give, 2, noun);
-    if (RunLife(second, ##Give) ~= 0) rfalse;
+    if (noun notin actor && ImplicitTake(noun)) return L__M(##Give, 1, noun);
+    if (second == actor) return L__M(##Give, 2, noun);
+    if (noun has worn && ImplicitDisrobe(noun)) return;
+    if (second == player) {
+        move noun to player;
+        return L__M(##Give, 4, noun);
+    }
+
+    if (RunLife(second, ##Give)) return;
     L__M(##Give, 3, second);
 ];
 
-[ GiveRSub; <Give second noun>; ];
+[ GiveRSub; <Give second noun, actor>; ];
 
 [ ShowSub;
-    if (parent(noun) ~= player) return L__M(##Show, 1, noun);
-    if (second == player) <<Examine noun>>;
-    if (RunLife(second, ##Show) ~= 0) rfalse;
+    if (noun notin actor && ImplicitTake(noun)) return L__M(##Show, 1, noun);
+    if (second == player) <<Examine noun, actor>>;
+    if (RunLife(second, ##Show)) return;
     L__M(##Show, 2, second);
 ];
 
-[ ShowRSub; <Show second noun>; ];
+[ ShowRSub; <Show second noun, actor>; ];
 
 ! ----------------------------------------------------------------------------
 !   Travelling around verbs
 ! ----------------------------------------------------------------------------
 
-[ EnterSub ancestor j k;
-    if (noun has door || noun in compass) <<Go noun>>;
+[ EnterSub ancestor j ks;
+    if (noun has door || noun in compass) <<Go noun, actor>>;
+    if (actor in noun) return L__M(##Enter, 1, noun);
+    if (noun hasnt enterable) return L__M(##Enter, 2, noun, verb_word);
 
-    if (player in noun) return L__M(##Enter, 1, noun);
-    if (noun hasnt enterable) return L__M(##Enter, 2, noun);
-    if (noun has container && noun hasnt open) return L__M(##Enter, 3, noun);
-
-    if (parent(player) ~= parent(noun)) {
-        ancestor = CommonAncestor(player, noun);
-        if (ancestor == player or 0) return L__M(##Enter, 4, noun);
-        while (player notin ancestor) {
-            j = parent(player);
-            k = keep_silent;
+    if (parent(actor) ~= parent(noun)) {
+        ancestor = CommonAncestor(actor, noun);
+        if (ancestor == actor or 0) return L__M(##Enter, 4, noun);
+        while (actor notin ancestor) {
+            j = parent(actor);
+            ks = keep_silent;
             if (parent(j) ~= ancestor || noun ~= ancestor) {
                 L__M(##Enter, 6, j);
                 keep_silent = 1;
             }
-            <Exit>;
-            keep_silent = k;
-            if (player in j) return;
+            <Exit, actor>;
+            keep_silent = ks;
+            if (actor in j) return;
         }
-        if (player in noun) return;
+        if (actor in noun) return;
         if (noun notin ancestor) {
             j = parent(noun);
             while (parent(j) ~= ancestor) j = parent(j);
             L__M(##Enter, 7, j);
-            k = keep_silent; keep_silent = 1;
-            <Enter j>;
-            keep_silent = k;
-            if (player notin j) return;
-            <<Enter noun>>;
+            ks = keep_silent; keep_silent = 1;
+            <Enter j, actor>;
+            keep_silent = ks;
+            if (actor notin j) return;
+            <<Enter noun, actor>>;
         }
     }
 
-    move player to noun;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+    if (noun has container && noun hasnt open && ImplicitOpen(noun)) return L__M(##Enter, 3, noun);
+    move actor to noun;
+
+    if (AfterRoutines() || keep_silent) return;
     L__M(##Enter, 5, noun);
-    Locale(noun);
+    if (actor == player) Locale(noun);
 ];
 
 [ GetOffSub;
-    if (parent(player) == noun) <<Exit>>;
+    if (parent(actor) == noun) <<Exit, actor>>;
     L__M(##GetOff, 1, noun);
 ];
 
 [ ExitSub p;
-    p = parent(player);
-    if (noun ~= nothing && noun ~= p) return L__M(##Exit,4,noun);
+    p = parent(actor);
+    if (noun ~= nothing && noun ~= p) return L__M(##Exit, 4 ,noun);
     if (p == location || (location == thedark && p == real_location)) {
-        if ((location.out_to ~= 0) || (location == thedark && real_location.out_to ~= 0))
-            <<Go out_obj>>;
+        if (actor provides posture && actor.posture) {
+            actor.posture = 0;
+            return L__M(##Exit, 6);
+        }
+        if ((location.out_to) || (location == thedark && real_location.out_to))
+            <<Go out_obj, actor>>;
         return L__M(##Exit, 1);
     }
-    if (p has container && p hasnt open) return L__M(##Exit, 2, p);
+    if (p has container && p hasnt open && ImplicitOpen(p))
+        return L__M(##Exit, 2, p);
 
-    move player to parent(p);
+    if (noun == nothing) {
+        inp1 = p;
+	if (RunRoutines(p, before)) return;
+    }
 
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
-    L__M(##Exit, 3, p); LookSub(1);
+    move actor to parent(p);
+    if (player provides posture) player.posture = 0;
+
+    if (AfterRoutines() || keep_silent) return;
+    L__M(##Exit, 3, p);
+    if (actor == player && p has container) LookSub(1);
 ];
 
 [ VagueGoSub; L__M(##VagueGo); ];
 
-[ GoInSub; <<Go in_obj>>; ];
+[ GoInSub; <<Go in_obj, actor>>; ];
 
-[ GoSub i j k df movewith thedir old_loc;
+[ GoSub i j k movewith thedir next_loc;
 
     ! first, check if any PushDir object is touchable
-    if (second ~= 0 && second notin Compass && ObjectIsUntouchable(second)) return;
+    if (second && second notin Compass && ObjectIsUntouchable(second)) return;
 
-    old_loc = location;
     movewith = 0;
-    i = parent(player);
+    i = parent(actor);
     if ((location ~= thedark && i ~= location) || (location == thedark && i ~= real_location)) {
         j = location;
         if (location == thedark) location = real_location;
@@ -1807,54 +2017,65 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
            movewith = i; i = parent(i);
         }
         else {
-            if (k == 0) L__M(##Go,1,i);
-            rtrue;
+            if (k) rtrue;
+            if (ImplicitExit(i)) return L__M(##Go, 1, i);
+            i = parent(actor);
         }
     }
 
     thedir = noun.door_dir;
-    if (ZRegion(thedir) == 2) thedir = RunRoutines(noun, door_dir);
+    if (metaclass(thedir) == Routine) thedir = RunRoutines(noun, door_dir);
 
-    j = i.thedir; k = ZRegion(j);
-    if (k == 3) { print (string) j; new_line; rfalse; }
-    if (k == 2) {
-        j = RunRoutines(i,thedir);
-        if (j==1) rtrue;
+    next_loc = i.thedir; k = metaclass(next_loc);
+    if (k == String) { print (string) next_loc; new_line; rfalse; }
+    if (k == Routine) {
+        next_loc = RunRoutines(i, thedir);
+        if (next_loc == 1) rtrue;
     }
 
-    if (k == 0 || j == 0) {
+    if (k == nothing || next_loc == 0) {
         if (i.cant_go ~= 0 or CANTGO__TX) PrintOrRun(i, cant_go);
-        else L__M(##Go,2);
+        else                              L__M(##Go, 2);
         rfalse;
     }
-
-    if (j has door) {
-        if (j has concealed) return L__M(##Go, 2);
-        if (j hasnt open) {
-            if (noun == u_obj) return L__M(##Go, 3, j);
-            if (noun == d_obj) return L__M(##Go, 4, j);
-            return L__M(##Go, 5, j);
+    if (next_loc has door) {
+        if (next_loc has concealed) return L__M(##Go, 2);
+        if (next_loc hasnt open && ImplicitOpen(next_loc)) {
+            if (noun == u_obj) return L__M(##Go, 3, next_loc);
+            if (noun == d_obj) return L__M(##Go, 4, next_loc);
+            return L__M(##Go, 5, next_loc);
         }
-        k = RunRoutines(j,door_to);
-        if (k == 0) return L__M(##Go, 6, j);
+        k = RunRoutines(next_loc, door_to);
+        if (k == 0) return L__M(##Go, 6, next_loc);
         if (k == 1) rtrue;
-        j = k;
+        next_loc = k;
     }
-    if (movewith == 0) move player to j; else move movewith to j;
 
-    location = j; MoveFloatingObjects();
-    df = OffersLight(j);
-    if (df ~= 0) { location = j; real_location = j; lightflag = 1; }
+    action = ##Going;
+    if (RunRoutines(next_loc, before)) { action = ##Go; return; }
+    action = ##Go;
+
+    if (movewith == 0) move actor to next_loc; else move movewith to next_loc;
+    if (actor ~= player) return L__M(##Go, 7);
+
+    k = location; location = next_loc;
+    MoveFloatingObjects();
+    if (OffersLight(location))
+        lightflag = true;
     else {
-        if (old_loc == thedark) {
-            DarkToDark();
-            if (deadflag ~= 0) rtrue;
+        lightflag = false;
+        if (k == thedark) {
+            if(DarkToDark() == false) ! From real_location To location
+                LibraryExtensions.RunAll(ext_darktodark);
+            if (deadflag) rtrue;
         }
-        real_location = j;
-        location = thedark; lightflag = 0;
+        location = thedark;
     }
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+    NoteDeparture(); real_location = next_loc;
+    action = ##Going;
+    if (RunRoutines(prev_location, after)) { action = ##Go; return; }
+    action = ##Go;
+    if (AfterRoutines() || keep_silent) return;
     LookSub(1);
 ];
 
@@ -1871,79 +2092,80 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     objectloop (j in descon)
         if (j hasnt concealed && j hasnt scenery) f = 1;
     if (f == 0) rfalse;
-    L__M(##Look, 4, descon); rtrue;
+    L__M(##Look, 4, descon);
 ];
 
 [ NotSupportingThePlayer o i;
     i = parent(player);
-    while (i ~= 0 && i ~= visibility_ceiling) {
+    while (i && i ~= visibility_ceiling) {
         if (i == o) rfalse;
         i = parent(i);
-        if (i ~= 0 && i hasnt supporter) rtrue;
+        if (i && i hasnt supporter) rtrue;
     }
     rtrue;
 ];
-
-[ Locale descin text1 text2 o k p j f2 flag;
+! modified with the fix for L61122
+[ Locale descin text_without_ALSO text_with_ALSO
+    o p num_objs must_print_ALSO;
     objectloop (o in descin) give o ~workflag;
-    k=0;
+    num_objs = 0;
     objectloop (o in descin)
         if (o hasnt concealed && NotSupportingThePlayer(o)) {
             #Ifndef MANUAL_PRONOUNS;
             PronounNotice(o);
             #Endif;
-            if (o hasnt scenery) {
-                give o workflag; k++;
-                p = initial; f2 = 0;
-                if ((o has door || o has container) && o has open && o provides when_open) {
-                    p = when_open; f2 = 1; jump Prop_Chosen;
+            if (o has scenery) {
+                if (o has supporter && child(o)) SayWhatsOn(o);
+            }
+            else {
+                give o workflag; num_objs++;
+                p = initial;
+                if ((o has door or container) && o has open && o provides when_open) {
+                    p = when_open; jump Prop_Chosen;
                 }
-                if ((o has door || o has container) && o hasnt open && o provides when_closed) {
-                    p = when_closed; f2 = 1; jump Prop_Chosen;
+                if ((o has door or container) && o hasnt open && o provides when_closed) {
+                    p = when_closed; jump Prop_Chosen;
                 }
                 if (o has switchable && o has on && o provides when_on) {
-                    p = when_on; f2 = 1; jump Prop_Chosen;
+                    p = when_on; jump Prop_Chosen;
                 }
                 if (o has switchable && o hasnt on && o provides when_off) {
-                    p = when_off; f2 = 1;
+                    p = when_off;
                 }
 
               .Prop_Chosen;
 
-                if (o hasnt moved || o.&describe ~= 0 || f2 == 1) {
-                    if (o.&describe ~= 0 && RunRoutines(o, describe) ~= 0) {
-                        flag = 1;
-                        give o ~workflag; k--;
-                    }
-                    else {
-                      j = o.p;
-                        if (j ~= 0) {
-                            new_line;
-                            PrintOrRun(o, p);
-                            flag = 1;
-                            give o ~workflag; k--;
-                            if (o has supporter && child(o) ~= 0) SayWhatsOn(o);
-                        }
-                    }
+                if (o.&describe && RunRoutines(o, describe)) {
+                    must_print_ALSO = true;
+                    give o ~workflag; num_objs--;
+                    continue;
+                }
+                if (o.p && (o hasnt moved || p ~= initial)) {
+                    new_line;
+                    PrintOrRun(o, p);
+                    must_print_ALSO = true;
+                    give o ~workflag; num_objs--;
+                    if (o has supporter && child(o)) SayWhatsOn(o);
                 }
             }
-            else
-                if (o has supporter && child(o) ~= 0) SayWhatsOn(o);
         }
 
-    if (k == 0) return 0;
+    if (num_objs == 0) return 0;
 
-    if (text1 ~= 0) {
+    if (actor ~= player) give actor concealed;
+    if (text_without_ALSO) {
         new_line;
-        if (flag == 1) text1 = text2;
-        print (string) text1, " ";
+        if (must_print_ALSO) print (string) text_with_ALSO, " ";
+        else print (string) text_without_ALSO, " ";
         WriteListFrom(child(descin),
           ENGLISH_BIT+RECURSE_BIT+PARTINV_BIT+TERSE_BIT+CONCEAL_BIT+WORKFLAG_BIT);
-        return k;
     }
-
-    if (flag == 1) L__M(##Look, 5, descin);
-    else           L__M(##Look, 6, descin);
+    else {
+        if (must_print_ALSO) L__M(##Look, 5, descin);
+        else L__M(##Look, 6, descin);
+    }
+    if (actor ~= player) give actor ~concealed;
+    return num_objs;
 ];
 
 ! ----------------------------------------------------------------------------
@@ -1958,14 +2180,26 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ LMode3Sub; lookmode=3; print (string) Story; L__M(##LMode3); ];  ! Superbrief
 
+[ LModeNormalSub;       ! 'normal' value: the default, or as set in Initialise()
+    switch (initial_lookmode) {
+      1:       <<LMode1>>;
+      3:       <<LMode3>>;
+      default: <<LMode2>>;
+    }
+];
+
 [ NoteArrival descin;
-    if (location == thedark) { lastdesc = thedark; return; }
     if (location ~= lastdesc) {
-        if (location.initial ~= 0) PrintOrRun(location, initial);
+        if (location.initial) PrintOrRun(location, initial);
+        if (location == thedark) { lastdesc = thedark; return; }
         descin = location;
-        NewRoom();
+        if(NewRoom() == false) LibraryExtensions.RunAll(ext_newroom);
         lastdesc = descin;
     }
+];
+
+[ NoteDeparture;
+    prev_location = real_location;
 ];
 
 [ ScoreArrival;
@@ -1981,9 +2215,8 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 [ FindVisibilityLevels visibility_levels;
     visibility_levels = 1;
     visibility_ceiling = parent(player);
-    while ((parent(visibility_ceiling) ~= 0)
-      && (visibility_ceiling hasnt container || visibility_ceiling has open ||
-          visibility_ceiling has transparent)) {
+    while ((parent(visibility_ceiling)) &&
+                  (visibility_ceiling hasnt container || visibility_ceiling has open or transparent)) {
         visibility_ceiling = parent(visibility_ceiling);
         visibility_levels++;
     }
@@ -2033,9 +2266,9 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
     if (lookmode < 3 && visibility_ceiling == location) {
         if ((allow_abbrev ~= 1) || (lookmode == 2) || (location hasnt visited)) {
-            if (location.&describe ~= 0) RunRoutines(location, describe);
+            if (location.&describe) RunRoutines(location, describe);
             else {
-                if (location.description == 0) RunTimeError(11, location);
+                if (location.description == 0) RunTimeError(11, location, description);
                 else PrintOrRun(location, description);
             }
         }
@@ -2045,44 +2278,46 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
     if (visibility_levels == 0) Locale(thedark);
     else {
-        for (i=player,j=visibility_levels : j>0: j--,i=parent(i)) give i workflag;
+        for (i=player,j=visibility_levels : j>0 : j--,i=parent(i)) give i workflag;
 
         for (j=visibility_levels : j>0 : j--) {
             for (i=player,k=0 : k<j : k++) i=parent(i);
-            if (i.inside_description ~= 0) {
+            if (i.inside_description) {
                 if (nl_flag) new_line; else nl_flag = 1;
-                PrintOrRun(i,inside_description); }
-            if (Locale(i)~=0) nl_flag=1;
+                    PrintOrRun(i,inside_description);
+                }
+            if (Locale(i)) nl_flag=1;
         }
     }
 
-    LookRoutine();
+    if(LookRoutine() == false) LibraryExtensions.RunAll(ext_lookroutine);
     ScoreArrival();
-
     action = ##Look;
-    if (AfterRoutines() == 1) rtrue;
+    AfterRoutines();
 ];
 
 [ ExamineSub i;
-    if (location == thedark) return L__M(##Examine, 1);
+    if (location == thedark) return L__M(##Examine, 1, noun);
     i = noun.description;
     if (i == 0) {
-        if (noun has container) <<Search noun>>;
+        if (noun has container)
+            if (noun has open) <<Search noun, actor>>;
+            else return L__M(##Search, 5, noun);
         if (noun has switchable) { L__M(##Examine, 3, noun); rfalse; }
         return L__M(##Examine, 2, noun);
     }
-    PrintOrRun(noun, description);
-    if (noun has switchable) L__M(##Examine, 3, noun);
-    if (AfterRoutines() == 1) rtrue;
+    i = PrintOrRun(noun, description);
+    if (i < 2 && noun has switchable) L__M(##Examine, 3, noun);
+    AfterRoutines();
 ];
 
 [ LookUnderSub;
-    if (location == thedark) return L__M(##LookUnder, 1);
+    if (location == thedark) return L__M(##LookUnder, 1, noun);
     L__M(##LookUnder, 2);
 ];
 
 [ VisibleContents o  i f;
-    objectloop (i in o) if (i hasnt concealed && i hasnt scenery) f++;
+    objectloop (i in o) if (i hasnt concealed or scenery) f++;
     return f;
 ];
 
@@ -2095,8 +2330,8 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
         return L__M(##Search, 3, noun);
     }
     if (noun hasnt container) return L__M(##Search, 4, noun);
-    if (noun hasnt transparent && noun hasnt open) return L__M(##Search, 5, noun);
-    if (AfterRoutines() == 1) rtrue;
+    if (noun hasnt transparent or open && ImplicitOpen(noun)) return L__M(##Search, 5, noun);
+    if (AfterRoutines()) return;
 
     if (f == 0) return L__M(##Search, 6, noun);
     L__M(##Search, 7, noun);
@@ -2111,9 +2346,10 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     if (noun hasnt lockable)     return L__M(##Unlock, 1, noun);
     if (noun hasnt locked)       return L__M(##Unlock, 2, noun);
     if (noun.with_key ~= second) return L__M(##Unlock, 3, second);
+
     give noun ~locked;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+
+    if (AfterRoutines() || keep_silent) return;
     L__M(##Unlock, 4, noun);
 ];
 
@@ -2121,11 +2357,11 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt lockable) return L__M(##Lock, 1, noun);
     if (noun has locked)     return L__M(##Lock, 2 ,noun);
-    if (noun has open)       return L__M(##Lock, 3 ,noun);
+    if (noun has open && ImplicitClose(noun)) return L__M(##Lock, 3, noun);
     if (noun.with_key ~= second) return L__M(##Lock, 4, second);
+
     give noun locked;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+    if (AfterRoutines() || keep_silent) return;
     L__M(##Lock, 5, noun);
 ];
 
@@ -2133,9 +2369,9 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt switchable) return L__M(##SwitchOn, 1, noun);
     if (noun has on)           return L__M(##SwitchOn, 2, noun);
+
     give noun on;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+    if (AfterRoutines() || keep_silent) return;
     L__M(##SwitchOn, 3, noun);
 ];
 
@@ -2143,67 +2379,63 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt switchable) return L__M(##SwitchOff, 1, noun);
     if (noun hasnt on)         return L__M(##SwitchOff, 2, noun);
+
     give noun ~on;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+    if (AfterRoutines() || keep_silent) return;
     L__M(##SwitchOff, 3, noun);
 ];
 
 [ OpenSub;
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt openable) return L__M(##Open, 1, noun);
-    if (noun has locked)     return L__M(##Open, 2, noun);
+    if (noun has locked && ImplicitUnlock(noun)) return L__M(##Open, 2, noun);
     if (noun has open)       return L__M(##Open, 3, noun);
     give noun open;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+
+    if (AfterRoutines() || keep_silent) return;
     if (noun has container && noun hasnt transparent && location ~= thedark
-        && VisibleContents(noun) ~= 0 && IndirectlyContains(noun, player) == 0)
+        && VisibleContents(noun) && IndirectlyContains(noun, player) == 0)
         return L__M(##Open, 4, noun);
-    L__M(##Open,5,noun);
+    L__M(##Open, 5, noun);
 ];
 
 [ CloseSub;
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt openable) return L__M(##Close, 1, noun);
     if (noun hasnt open)     return L__M(##Close, 2, noun);
+
     give noun ~open;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+    if (AfterRoutines() || keep_silent) return;
     L__M(##Close, 3, noun);
 ];
 
 [ DisrobeSub;
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt worn) return L__M(##Disrobe, 1, noun);
+
     give noun ~worn;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
-    L__M(##Disrobe,2,noun);
+    if (AfterRoutines() || keep_silent) return;
+    L__M(##Disrobe, 2, noun);
 ];
 
 [ WearSub;
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt clothing)    return L__M(##Wear, 1, noun);
-    if (parent(noun) ~= player) return L__M(##Wear, 2, noun);
+    if (noun notin actor && ImplicitTake(noun)) return L__M(##Wear, 2, noun);
     if (noun has worn)          return L__M(##Wear, 3, noun);
+
     give noun worn;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+    if (AfterRoutines() || keep_silent) return;
     L__M(##Wear, 4, noun);
 ];
 
 [ EatSub;
     if (ObjectIsUntouchable(noun)) return;
     if (noun hasnt edible) return L__M(##Eat, 1, noun);
-    if (noun has worn) {
-        L__M(##Drop, 3, noun);
-        <Disrobe noun>;
-        if (noun has worn && noun in player) rtrue;
-    }
+    if (noun has worn && ImplicitDisrobe(noun)) return;
+
     remove noun;
-    if (AfterRoutines() == 1) rtrue;
-    if (keep_silent == 1) rtrue;
+    if (AfterRoutines() || keep_silent) return;
     L__M(##Eat, 2, noun);
 ];
 
@@ -2215,63 +2447,73 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 [ AllowPushDir i;
     if (parent(second) ~= compass) return L__M(##PushDir, 2, noun);
     if (second == u_obj or d_obj)  return L__M(##PushDir, 3, noun);
-    AfterRoutines(); i = noun; move i to player;
-    <Go second>;
+    AfterRoutines(); i = noun; move i to actor;
+    <Go second, actor>;
     if (location == thedark) move i to real_location;
     else                     move i to location;
 ];
 
 [ AnswerSub;
-    if (second ~= 0 && RunLife(second,##Answer) ~= 0) rfalse;
+    if (second && RunLife(second,##Answer)) rfalse;
     L__M(##Answer, 1, noun);
 ];
 
 [ AskSub;
-    if (RunLife(noun,##Ask) ~= 0) rfalse;
+    if (RunLife(noun,##Ask)) rfalse;
     L__M(##Ask, 1, noun);
 ];
 
 [ AskForSub;
-    if (noun == player) <<Inv>>;
+    if (noun == player) <<Inv, actor>>;
     L__M(##Order, 1, noun);
 ];
 
-[ AskToSub;
-    L__M(##Order, 1, noun);
-];
+[ AskToSub; L__M(##Order, 1, noun); ];
 
 [ AttackSub;
     if (ObjectIsUntouchable(noun)) return;
-    if (noun has animate && RunLife(noun, ##Attack) ~= 0) rfalse;
+    if (noun has animate && RunLife(noun, ##Attack)) rfalse;
     L__M(##Attack, 1, noun);
 ];
 
 [ BlowSub; L__M(##Blow, 1, noun); ];
 
-[ BurnSub; L__M(##Burn, 1, noun); ];
+[ BurnSub;
+    if (noun has animate) return L__M(##Burn, 2, noun);
+    L__M(##Burn, 1, noun);
+];
 
 [ BuySub; L__M(##Buy, 1, noun); ];
 
-[ ClimbSub; L__M(##Climb, 1, noun); ];
+[ ClimbSub;
+    if (noun has animate) return L__M(##Climb, 2, noun);
+    L__M(##Climb, 1, noun);
+];
 
 [ ConsultSub; L__M(##Consult, 1, noun); ];
 
-[ CutSub; L__M(##Cut, 1, noun); ];
+[ CutSub;
+    if (noun has animate) return L__M(##Cut, 2, noun);
+    L__M(##Cut, 1, noun);
+];
 
 [ DigSub; L__M(##Dig, 1, noun); ];
 
 [ DrinkSub; L__M(##Drink, 1, noun); ];
 
-[ FillSub; L__M(##Fill, 1, noun); ];
+[ FillSub; L__M(##Fill, 1, noun, second); ];
 
 [ JumpSub; L__M(##Jump, 1, noun); ];
 
-[ JumpOverSub; L__M(##JumpOver, 1, noun); ];
+[ JumpOverSub;
+    if (noun has animate) return L__M(##JumpOver, 2, noun);
+    L__M(##JumpOver, 1, noun);
+];
 
 [ KissSub;
     if (ObjectIsUntouchable(noun)) return;
-    if (RunLife(noun, ##Kiss) ~= 0) rfalse;
-    if (noun == player) return L__M(##Touch, 3, noun);
+    if (RunLife(noun, ##Kiss)) return;
+    if (noun == actor) return L__M(##Touch, 3, noun);
     L__M(##Kiss, 1, noun);
 ];
 
@@ -2285,23 +2527,31 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ PullSub;
     if (ObjectIsUntouchable(noun)) return;
-    if (noun has static)  return L__M(##Pull, 1, noun);
-    if (noun has scenery) return L__M(##Pull, 2, noun);
-    if (noun has animate) return L__M(##Pull, 4, noun);
-    L__M(##Pull, 3, noun);
+    if (noun == player)   return L__M(##Pull, 1, noun);
+    if (noun == actor)    return L__M(##Pull, 6, noun);
+    if (noun has static)  return L__M(##Pull, 2, noun);
+    if (noun has scenery) return L__M(##Pull, 3, noun);
+    if (noun has animate) return L__M(##Pull, 5, noun);
+    L__M(##Pull, 4, noun);
 ];
 
 [ PushSub;
     if (ObjectIsUntouchable(noun)) return;
-    if (noun has static)  return L__M(##Push, 1, noun);
-    if (noun has scenery) return L__M(##Push, 2, noun);
-    if (noun has animate) return L__M(##Push, 4, noun);
-    L__M(##Push, 3, noun);
+    if (noun == player)   return L__M(##Push, 1, noun);
+    if (noun == actor)    return L__M(##Push, 5, noun);
+    if (noun has static)  return L__M(##Push, 2, noun);
+    if (noun has scenery) return L__M(##Push, 3, noun);
+    if (noun has animate) return L__M(##Push, 5, noun);
+    L__M(##Push, 4, noun);
 ];
 
 [ PushDirSub; L__M(##PushDir, 1, noun); ];
 
-[ RubSub; L__M(##Rub, 1, noun); ];
+[ RubSub;
+    if (ObjectIsUntouchable(noun)) return;
+    if (noun has animate) return L__M(##Rub, 2, noun);
+    L__M(##Rub, 1, noun);
+];
 
 [ SetSub; L__M(##Set, 1, noun); ];
 
@@ -2311,13 +2561,16 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ SleepSub; L__M(##Sleep, 1, noun); ];
 
-[ SmellSub; L__M(##Smell, 1, noun); ];
+[ SmellSub;
+    if (noun ~= nothing && noun has animate) return L__M(##Smell, 2, noun);
+    L__M(##Smell, 1, noun);
+];
 
 [ SorrySub; L__M(##Sorry, 1, noun); ];
 
 [ SqueezeSub;
     if (ObjectIsUntouchable(noun)) return;
-    if (noun has animate) return L__M(##Squeeze, 1, noun);
+    if (noun has animate && noun ~= player) return L__M(##Squeeze, 1, noun);
     L__M(##Squeeze, 2, noun);
 ];
 
@@ -2327,11 +2580,15 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ SwingSub; L__M(##Swing, 1, noun); ];
 
-[ TasteSub; L__M(##Taste, 1, noun); ];
+[ TasteSub;
+    if (ObjectIsUntouchable(noun)) return;
+    if (noun has animate) return L__M(##Taste, 2, noun);
+    L__M(##Taste, 1, noun);
+];
 
 [ TellSub;
-    if (noun == player) return L__M(##Tell, 1, noun);
-    if (RunLife(noun, ##Tell) ~= 0) rfalse;
+    if (noun == actor) return L__M(##Tell, 1, noun);
+    if (RunLife(noun, ##Tell)) return;
     L__M(##Tell, 2, noun);
 ];
 
@@ -2341,37 +2598,39 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
     if (ObjectIsUntouchable(noun)) return;
     if (second > 1) {
         action = ##ThrownAt;
-        if (RunRoutines(second, before) ~= 0) { action = ##ThrowAt; rtrue; }
+        if (RunRoutines(second, before)) { action = ##ThrowAt; rtrue; }
         action = ##ThrowAt;
     }
-    if (noun has worn) {
-        L__M(##Drop, 3, noun);
-        <Disrobe noun>;
-        if (noun has worn && noun in player) rtrue;
-    }
-    if (second hasnt animate) return L__M(##ThrowAt, 1);
-    if (RunLife(second,##ThrowAt) ~= 0) rfalse;
+    if (noun has worn && ImplicitDisrobe(noun)) return;
+    if (second hasnt animate) return L__M(##ThrowAt, 1, noun);
+    if (RunLife(second, ##ThrowAt)) return;
     L__M(##ThrowAt, 2, noun);
 ];
 
-[ TieSub; L__M(##Tie,1,noun); ];
+[ TieSub;
+    if (noun has animate) return L__M(##Tie, 2, noun);
+    L__M(##Tie, 1, noun);
+];
 
 [ TouchSub;
-    if (noun == player)   return L__M(##Touch, 3, noun);
+    if (noun == actor)   return L__M(##Touch, 3, noun);
     if (ObjectIsUntouchable(noun)) return;
     if (noun has animate) return L__M(##Touch, 1, noun);
-    L__M(##Touch,2,noun); ];
+    L__M(##Touch, 2,noun);
+];
 
 [ TurnSub;
     if (ObjectIsUntouchable(noun)) return;
-    if (noun has static)   return L__M(##Turn, 1, noun);
-    if (noun has scenery)  return L__M(##Turn, 2, noun);
-    if (noun has animate)  return L__M(##Turn, 4, noun);
-    L__M(##Turn, 3, noun);
+    if (noun == player)    return L__M(##Push, 1, noun);
+    if (noun == actor)     return L__M(##Turn, 5, noun);
+    if (noun has static)   return L__M(##Turn, 2, noun);
+    if (noun has scenery)  return L__M(##Turn, 3, noun);
+    if (noun has animate)  return L__M(##Turn, 5, noun);
+    L__M(##Turn, 4, noun);
 ];
 
 [ WaitSub;
-    if (AfterRoutines() == 1) rtrue;
+    if (AfterRoutines()) rtrue;
     L__M(##Wait, 1, noun);
 ];
 
@@ -2379,15 +2638,22 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 [ WakeOtherSub;
     if (ObjectIsUntouchable(noun)) return;
-    if (RunLife(noun, ##WakeOther) ~= 0) rfalse;
+    if (RunLife(noun, ##WakeOther)) return;
     L__M(##WakeOther, 1, noun);
 ];
-
+!FIXME I'm not sure I like these defaults from 2006 that say "You decide 
+! that's not a good idea" instead of "You look ridiculous waving the 
+! thing".  I'll have to revisit this when the merge from 2006 is complete.
 [ WaveSub;
-    if (parent(noun) ~= player) return L__M(##Wave, 1, noun);
-    L__M(##Wave, 2 ,noun); ];
+    if (noun == player) return L__M(##Wave, 2 ,noun);
+    if (noun == actor) return L__M(##Wave, 3, noun);
+    if (noun notin actor && ImplicitTake(noun)) return L__M(##Wave, 1, noun);
+    L__M(##Wave, 2, noun);
+];
 
-[ WaveHandsSub; L__M(##WaveHands, 1, noun); ];
+[ WaveHandsSub;
+    if (noun) return L__M(##WaveHands, 2, noun);
+    L__M(##WaveHands, 1, noun); ];
 
 [ YesSub; L__M(##Yes); ];
 
@@ -2397,32 +2663,54 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 
 #Ifdef DEBUG;
 
-[ TraceOnSub; parser_trace=1; "[Trace on.]"; ];
+[ TraceOnSub; parser_trace = 1; "[Trace on.]"; ];
 
 [ TraceLevelSub;
     parser_trace = noun;
     print "[Parser tracing set to level ", parser_trace, ".]^";
 ];
 
-[ TraceOffSub; parser_trace=0; "Trace off."; ];
+[ TraceOffSub; parser_trace = 0; "Trace off."; ];
 
-[ RoutinesOnSub;  debug_flag = debug_flag | 1;  "[Message listing on.]"; ];
+[ RoutinesOnSub;
+    debug_flag = debug_flag |  DEBUG_MESSAGES;
+    "[Message listing on.]";
+];
 
-[ RoutinesOffSub; debug_flag = debug_flag & 14; "[Message listing off.]"; ];
+[ RoutinesOffSub;
+    debug_flag = debug_flag & ~DEBUG_MESSAGES;
+    "[Message listing off.]";
+];
 
-[ ActionsOnSub;   debug_flag = debug_flag | 2;  "[Action listing on.]"; ];
+[ RoutinesVerboseSub;
+    debug_flag = debug_flag | (DEBUG_VERBOSE|DEBUG_MESSAGES);
+    "[Verbose message listing on.]";
+];
 
-[ ActionsOffSub;  debug_flag = debug_flag & 13; "[Action listing off.]"; ];
+[ ActionsOnSub;
+    debug_flag = debug_flag |  DEBUG_ACTIONS;
+    "[Action listing on.]";
+];
 
-[ TimersOnSub;    debug_flag = debug_flag | 4;  "[Timers listing on.]"; ];
+[ ActionsOffSub;
+    debug_flag = debug_flag & ~DEBUG_ACTIONS;
+    "[Action listing off.]";
+];
 
-[ TimersOffSub;   debug_flag = debug_flag & 11; "[Timers listing off.]"; ];
+[ TimersOnSub;
+    debug_flag = debug_flag |  DEBUG_TIMERS;
+    "[Timers listing on.]";
+];
+
+[ TimersOffSub;
+    debug_flag = debug_flag & ~DEBUG_TIMERS;
+    "[Timers listing off.]";
+];
 
 #Ifdef VN_1610;
 
-[ ChangesOnSub;   debug_flag = debug_flag | 8;  "[Changes listing on.]"; ];
-
-[ ChangesOffSub;  debug_flag = debug_flag & 7;  "[Changes listing off.]"; ];
+[ ChangesOnSub;   debug_flag = debug_flag |  DEBUG_CHANGES;  "[Changes listing on.]"; ];
+[ ChangesOffSub;  debug_flag = debug_flag & ~DEBUG_CHANGES;  "[Changes listing off.]"; ];
 
 #Ifnot;
 
@@ -2449,9 +2737,11 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 #Endif; ! TARGET_;
 
 [ XTestMove obj dest;
+    if (~~obj ofclass Object) "[Not an object.]";
+    if (~~dest ofclass Object) "[Destination not an object.]";
     if ((obj <= InformLibrary) || (obj == LibraryMessages) || (obj in 1))
         "[Can't move ", (name) obj, ": it's a system object.]";
-    while (dest ~= 0) {
+    while (dest) {
         if (dest == obj) "[Can't move ", (name) obj, ": it would contain itself.]";
         dest = parent(dest);
     }
@@ -2473,38 +2763,41 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 [ XObj obj f;
     if (parent(obj) == 0) print (name) obj; else print (a) obj;
     print " (", obj, ") ";
-    if (f == 1 && parent(obj) ~= 0)
-        print "(in ", (name) parent(obj), " ", parent(obj), ")";
+    if (f && parent(obj))
+        print "in ~", (name) parent(obj), "~ (", parent(obj), ")";
     new_line;
     if (child(obj) == 0) rtrue;
-    if (obj == Class)
-        WriteListFrom(child(obj), NEWLINE_BIT+INDENT_BIT+ALWAYS_BIT+NOARTICLE_BIT, 1);
+    if (obj == Class) ! ???
+        WriteListFrom(child(obj), NEWLINE_BIT+INDENT_BIT+ALWAYS_BIT+ID_BIT+NOARTICLE_BIT, 1);
     else
-        WriteListFrom(child(obj), NEWLINE_BIT+INDENT_BIT+ALWAYS_BIT+FULLINV_BIT, 1);
+        WriteListFrom(child(obj), NEWLINE_BIT+INDENT_BIT+ALWAYS_BIT+ID_BIT+FULLINV_BIT, 1);
 ];
 
 [ XTreeSub i;
+    if (noun && ~~noun ofclass Object) "[Not an object.]";
     if (noun == 0) {
         objectloop (i)
             if (i ofclass Object && parent(i) == 0) XObj(i);
     }
-    else XObj(noun,1);
+    else XObj(noun, true);
 ];
 
 [ GotoSub;
-    if (~~(noun ofclass Object) || (parent(noun)~=0)) "[Not a safe place.]";
+    if ((~~noun ofclass Object) || parent(noun)) "[Not a safe place.]";
     PlayerTo(noun);
 ];
 
-[ GonearSub x;
+[ GoNearSub x;
+    if (~~noun ofclass Object) "[Not a safe place.]";
     x = noun;
-    while (parent(x) ~= 0) x = parent(x);
+    while (parent(x)) x = parent(x);
     PlayerTo(x);
 ];
 
 [ Print_ScL obj; print_ret ++x_scope_count, ": ", (a) obj, " (", obj, ")"; ];
 
 [ ScopeSub;
+    if (noun && ~~noun ofclass Object) "[Not an object.]";
     x_scope_count = 0;
     LoopOverScope(Print_ScL, noun);
     if (x_scope_count == 0) "Nothing is in scope.";
@@ -2563,23 +2856,25 @@ Constant NOARTICLE_BIT  4096;       ! Print no articles, definite or not
 !   Finally: the mechanism for library text (the text is in the language defn)
 ! ----------------------------------------------------------------------------
 
-[ L__M act n x1 s;
+[ L__M act n x1 x2 s;
+    if (keep_silent == 2) return;
     s = sw__var;
     sw__var = act;
     if (n == 0) n = 1;
-    L___M(n,x1);
+    L___M(n, x1, x2);
     sw__var = s;
 ];
 
-[ L___M n x1 s;
+[ L___M n x1 x2 s;
     s = action;
     lm_n = n;
     lm_o = x1;
+    lm_s = x2;
     action = sw__var;
-    if (RunRoutines(LibraryMessages, before) ~= 0)        { action = s; rfalse; }
-    if (LibraryExtensions.RunWhile(ext_messages, 0) ~= 0) { action = s; rfalse; }
+    if (RunRoutines(LibraryMessages, before))             { action = s; rfalse; }
+    if (LibraryExtensions.RunWhile(ext_messages, false )) { action = s; rfalse; }
     action = s;
-    LanguageLM(n, x1);
+    LanguageLM(n, x1, x2);
 ];
 
 ! ==============================================================================
