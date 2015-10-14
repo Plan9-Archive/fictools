@@ -1,9 +1,14 @@
 ! ==============================================================================
 !   PARSER:  Front end to parser.
 !
-!   Supplied for use with Inform 6 -- Release 6/11 -- Serial number 040227
+!   Supplied for use with Inform 6 -- Release 6/12-beta1 -- Serial number 140724
 !
-!   Copyright Graham Nelson 1993-2004 but freely usable (see manuals)
+!   Copyright Graham Nelson 1993-2004 and David Griffith 2012-2014
+!
+!   This code is licensed under either the traditional Inform license as
+!   described by the DM4 or the Artistic License version 2.0.  See the
+!   file COPYING in the distribution archive or at
+!   https://github.com/DavidGriffith/inform6lib/
 !
 !   In your game file, Include three library files in this order:
 !       Include "Parser";
@@ -15,10 +20,21 @@ System_file;
 
 ! ------------------------------------------------------------------------------
 
-Constant LibSerial       "040227";
-Constant LibRelease      "6/11";
-Constant LIBRARY_VERSION  611;
+#Ifndef VN_1633;
+Message fatalerror "*** Library 6/12 needs Inform v6.33 or later to work ***";
+#Endif; ! VN_
+
+Constant LibSerial       "140724";
+Constant LibRelease      "6/12-beta1";
+Constant LIBRARY_VERSION  612;
 Constant Grammar__Version 2;
+
+Constant BEFORE_PARSER   10;
+Constant AFTER_PARSER    20;
+Constant AFTER_VERBLIB   30;
+Constant AFTER_GRAMMAR   40;
+
+Constant LIBRARY_STAGE = BEFORE_PARSER;
 
 Default COMMENT_CHARACTER '*';
 
@@ -27,7 +43,7 @@ Default DEBUG 0;
 #Endif; ! INFIX
 
 #Ifndef WORDSIZE;                   ! compiling with Z-code only compiler
-Constant TARGET_ZCODE;
+Default TARGET_ZCODE 0;
 Constant WORDSIZE 2;
 #Endif; ! WORDSIZE
 
@@ -87,10 +103,6 @@ Constant ROM_GAMESERIAL    $36;     ! six ASCII characters
 
 #Endif; ! TARGET_
 
-#Ifndef VN_1610;
-Message fatalerror "*** Library 6/11 needs Inform v6.10 or later to work ***";
-#Endif; ! VN_
-
 Include "linklpa";
 
 Fake_Action LetGo;
@@ -103,6 +115,7 @@ Fake_Action ListMiscellany;
 Fake_Action Miscellany;
 Fake_Action Prompt;
 Fake_Action NotUnderstood;
+Fake_Action Going;
 
 #Ifdef NO_PLACES;
 Fake_Action Places;
@@ -123,6 +136,6 @@ Include "parserm";
 
 ! ==============================================================================
 
-Constant LIBRARY_PARSER;        ! for dependency checking
+Undef LIBRARY_STAGE; Constant LIBRARY_STAGE = AFTER_PARSER;
 
 ! ==============================================================================

@@ -1,0 +1,166 @@
+!% -SD
+
+!============================================================================
+! In-progress work by Ben Kidwell ("mycroftiv")
+! Initial game template by Roger Firth and Sonja Kesserich (IBG Captain Fate)
+
+Constant Story "Harmonic Time-Bind Ritual Symphony";
+Constant Headline
+"^9:15 PM 27 Sept.  2015
+^
+^You type the introductory text of the game into the acme text editor.
+It is running on a Plan 9 cpu/file server that you connect to with
+Drawterm.  You have spent the past thirty minutes on the porch with
+Staci, watching as the moon became completely eclipsed.  Your room is
+filled with cheap computers running customized grid software called
+Advanced Namespace Tools.
+^
+^There is a mostly empty cup of coffee here.
+^
+^There is a Moon Man beer here, half full.
+^
+^Outside, the moon is completely eclipsed, a shadowy phantom of its
+usual brilliance.
+^
+^>go outside
+^
+^You walk onto the porch.  You contemplate the mysterious beauty of the
+moon.  Around your neck, the Lunar Revolution Power Pendant resonates
+with the hum of the night; a slight breeze, crickets.  The bridge to
+the west has been closed for weeks and everything has been quiet and
+still.
+^
+^You contemplate the past few years of lunacy.  It has been an
+unbelievable Adventure since New Year's 2013, when you resolved to
+return to Plan 9 software development.  You weren't trying start a
+Revolution; you just wanted something useful to do with your time.
+The VALISpectrum colors, the Singing Hippie Housekeepers, Central
+Headquarters (the Castle), riding Lunar Lightning to Cosmic Delights
+and visiting the Afterlife, falling in love - everything ensued from
+making the binds of fiction and reality that granted you the freedom
+to become
+^
+^THE MOON COMPUTER (Chapter 1)
+^
+^";
+
+!Release 1; Serial "020428";    ! IBG first edition (public beta)
+!Release 2; Serial "020827";    ! IBG second edition
+Release 0;  Serial "150928";    ! for keeping track of public releases
+
+Include "parser";
+
+Object  LibraryMessages         ! must be defined between Parser and VerbLib
+  with  before [;
+          Buy:    "Petty commerce interests you only on COUNTED occasions.";
+          Dig:    "Your keen senses detect NOTHING underground worth your
+                   immediate attention.";
+          Pray:   "You won't need to bother almighty DIVINITIES to save
+                   the day.";
+          Sing:   "Alas! That is not one of your many superpowers.";
+          Sleep:  "A hero is ALWAYS on the watch.";
+          Sorry:  "Captain FATE prefers ACTION over apologies.";
+          Strong: "An unlikely vocabulary for a HERO like you.";
+          Swim:   "You quickly turn all your ATTENTION towards locating a
+                   suitable place to EXERCISE your superior strokes,
+                   but alas! you find none.";
+          Miscellany:
+            if (lm_n == 38)
+                "That's not a verb you need to SUCCESSFULLY save the day.";
+            if (lm_n == 39)
+                "That's not something you need to refer to in order to
+                 SAVE the day.";
+        ];
+
+Include "verblib";
+!#include "/usr/glenda/fictools/castles-1.1/c/runtime.s";
+!#include "/usr/glenda/fictools/castles-1.1/libc/zlibc.inf";
+!#include "/usr/glenda/fictools/castles-1.1/c/system.s";
+!#include "/usr/glenda/fictools/code/permute.o";
+
+!============================================================================
+! Object classes
+
+Class   Room
+  with  description "UNDER CONSTRUCTION",
+  has   light;
+
+Class   Appliance
+  with  before [;
+          Take,Pull,Push,PushDir:
+            "Even though your SCULPTED adamantine muscles are up to the task,
+             you don't favour property damage.";
+        ],
+  has   scenery;
+
+!============================================================================
+! The game objects
+
+Room    street "On the street"
+  with  name 'city' 'buildings' 'skyscrapers' 'shops' 'apartments' 'cars',
+        description [;
+           "On one side -- which your HEIGHTENED sense of direction
+            indicates is NORTH -- there's an open cafe now serving
+            lunch. To the south, you can see a phone booth.";
+        ],
+        in_to "But which way?",
+        cant_go
+            "No time now for exploring! You'll move much faster in your
+             Captain FATE costume.";
+
+
+!============================================================================
+! Entry point routines
+
+[ Initialise;
+    location = street;
+    lookmode = 2;
+    "^^The full moon amidst clouds spills milky brightness everywhere.
+Summer is just barely over but the air is still warm and moist. Staci
+is standing on tip-toe, looking over the edge of the rooftops and
+treebranches. Oh! I can tell it's started, she says. You stand up
+and walk across the porch, slipping your arm around her as you turn to
+watch the sky. What had been a low full circle wreathed by clouds is
+higher now and shinining clearly, but no longer full - darkness was
+creeping across the surface as the Moon swung into the path of the
+shadow cast by Earth amidst the Sun's light. You peer upwards together,
+savoring the moment. The night air is sweet and warm, you are with
+someone you love...and the Castle is about to reopen.^^";
+
+];
+
+[ DeathMessage;
+    if (deadflag == 3) print "Your secret identity has been revealed";
+    if (deadflag == 4) print "You have been SHAMEFULLY defeated";
+    if (deadflag == 5) print "You fly away to SAVE the DAY";
+];
+
+[ startup;
+!	InitLibC();
+!	__init_vars_permute();
+!	deadflag = cinvoke(_main);
+	return true;
+];
+
+[ InScope person item;
+    return false;
+];
+
+!============================================================================
+! Standard and extended grammar
+
+Include "grammar";
+
+[ ChangeSub;
+    if (noun has pluralname) print "They're";
+    else                     print "That's";
+    " not something you must change to save the day.";
+];
+
+Verb 'change' 'exchange' 'swap' 'swop'
+    * noun                  -> Change;
+
+Extend 'ask'
+    * creature 'for' topic  -> AskFor;
+
+!============================================================================
