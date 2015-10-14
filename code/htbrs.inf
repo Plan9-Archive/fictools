@@ -2,7 +2,8 @@
 
 !============================================================================
 ! In-progress work by Ben Kidwell ("mycroftiv")
-! Initial game template by Roger Firth and Sonja Kesserich (IBG Captain Fate)
+! Currently all rights reserved, I'll put a more open license on it when it's done
+! Thanks to Inform Beginner's Guide Captain Fate for the template
 
 Constant Story "Harmonic Time-Bind Ritual Symphony";
 Constant Headline
@@ -11,9 +12,9 @@ Constant Headline
 ^You type the introductory text of the game into the acme text editor.
 It is running on a Plan 9 cpu/file server that you connect to with
 Drawterm.  You have spent the past thirty minutes on the porch with
-Staci, watching as the moon became completely eclipsed.  Your room is
-filled with cheap computers running customized grid software called
-Advanced Namespace Tools.
+Staci, watching the lunar eclipse.  Your room is filled with cheap
+computers running customized grid software called Advanced Namespace
+Tools.
 ^
 ^There is a mostly empty cup of coffee here.
 ^
@@ -31,89 +32,118 @@ the west has been closed for weeks and everything has been quiet and
 still.
 ^
 ^You contemplate the past few years of lunacy.  It has been an
-unbelievable Adventure since New Year's 2013, when you resolved to
+unbelievable adventure since New Year's 2013, when you resolved to
 return to Plan 9 software development.  You weren't trying start a
-Revolution; you just wanted something useful to do with your time.
-The VALISpectrum colors, the Singing Hippie Housekeepers, Central
-Headquarters (the Castle), riding Lunar Lightning to Cosmic Delights
-and visiting the Afterlife, falling in love - everything ensued from
-making the binds of fiction and reality that granted you the freedom
-to become
+revolution; you just wanted something useful to do with your time.
+The VALISpectrum colors, the singing hippie housekeepers, the dock by
+the castle, riding Lunar Lightning to Cosmic Delights and visiting the
+Afterlife, falling in love - everything ensued from making the binds
+of fiction and reality that transformed you into
 ^
-^THE MOON COMPUTER (Chapter 1)
+^THE MOON COMPUTER (Movement 1)
+^March 11 2013
 ^
 ^";
 
-!Release 1; Serial "020428";    ! IBG first edition (public beta)
-!Release 2; Serial "020827";    ! IBG second edition
-Release 0;  Serial "150928";    ! for keeping track of public releases
+Release 0;  Serial "151014";    ! for keeping track of public releases
 
 Include "parser";
 
 Object  LibraryMessages         ! must be defined between Parser and VerbLib
   with  before [;
-          Buy:    "Petty commerce interests you only on COUNTED occasions.";
-          Dig:    "Your keen senses detect NOTHING underground worth your
-                   immediate attention.";
-          Pray:   "You won't need to bother almighty DIVINITIES to save
-                   the day.";
-          Sing:   "Alas! That is not one of your many superpowers.";
-          Sleep:  "A hero is ALWAYS on the watch.";
-          Sorry:  "Captain FATE prefers ACTION over apologies.";
-          Strong: "An unlikely vocabulary for a HERO like you.";
-          Swim:   "You quickly turn all your ATTENTION towards locating a
-                   suitable place to EXERCISE your superior strokes,
-                   but alas! you find none.";
+          Buy:    "You think about money and dream of transforming the economic system with Plan 9 unique digital object alternative community currencies.";
+          Dig:    "In another reality, your dog-self burrows deeply within the Earth, uncovering exactly the items needed to continue your journey. In this world, you accomplish nothing.";
+          Pray:   "You offer prayers to many Gods as well as the laws of physics.";
+          Sing:   "You start with a bit of Mozart's Marriage of Figaro, move on to a few of your favorite Wu-Tang verses, and conclude with a heartfelt imitation of how IU would sound singing Ripple by the Grateful Dead.";
+          Sleep:  "You drift for awhile into another realm, a tourist in one of the uncountable branches of the multiverse.";
+          Sorry:  "Rather than being caught up in apologies and regrets, you try to maintain focus on future improvement.";
+          Strong: "Say that again, and louder! Shout it! Let the world know how you feel!";
+          Swim:   "The Madison lakes are beautiful to look at, and some people have the immune system required to cope with algae and bacteria, but you prefer to sit on the shore and watch the chromatic flickering of the ripples.";
           Miscellany:
             if (lm_n == 38)
-                "That's not a verb you need to SUCCESSFULLY save the day.";
+                "That action is outside the scope of this simulation.";
             if (lm_n == 39)
-                "That's not something you need to refer to in order to
-                 SAVE the day.";
+                "This game world does not provide that level of detail.";
         ];
 
 Include "verblib";
-!#include "/usr/glenda/fictools/castles-1.1/c/runtime.s";
-!#include "/usr/glenda/fictools/castles-1.1/libc/zlibc.inf";
-!#include "/usr/glenda/fictools/castles-1.1/c/system.s";
-!#include "/usr/glenda/fictools/code/permute.o";
 
 !============================================================================
 ! Object classes
 
 Class   Room
-  with  description "UNDER CONSTRUCTION",
+  with  description "UNIMPLEMENTED ROOM DESCRIPTION",
   has   light;
 
-Class   Appliance
-  with  before [;
-          Take,Pull,Push,PushDir:
-            "Even though your SCULPTED adamantine muscles are up to the task,
-             you don't favour property damage.";
-        ],
+Class   Decor
+  with  description "UNIMPLEMENTED DECOR DESCRIPTION",
   has   scenery;
 
 !============================================================================
 ! The game objects
 
-Room    street "On the street"
-  with  name 'city' 'buildings' 'skyscrapers' 'shops' 'apartments' 'cars',
-        description [;
-           "On one side -- which your HEIGHTENED sense of direction
-            indicates is NORTH -- there's an open cafe now serving
-            lunch. To the south, you can see a phone booth.";
-        ],
-        in_to "But which way?",
-        cant_go
-            "No time now for exploring! You'll move much faster in your
-             Captain FATE costume.";
+Room    milw_street "Outside my house"
+	with	name 'Milwaukee_St.',
+			description [;
+           "Your section of Milwaukee Street is directly across from a small farm which remains as an agricultural island within the city. An open field and a barn are across the street. Toward the southwest is Atwood Street leading toward downtown. Monona Drive is to the south. The edge of town lies toward the northeast.";
+			],
+		in_to home,
+		sw_to atwood_av,
+		s_to mon_cot,
+		ne_to etown,
+		cant_go "You go for a brief walk in the neighborhood, then return home. You may travel sw, s, ne, or enter your house.";
+
+Room	atwood_av "Atwood Avenue, by several shops"
+	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Cosmic Delights, Revolution Cycles, and Absolutely Art",
+		ne_to milw_street;
+
+Room	mon_cot "Monona Drive and Cottage Grove Road"
+	with	name "Monona&Cottage",
+			description "Traffic is heavy at the intersection of these roads. Nearby is Java Cat Cafe. Monona Drive continues to the south, and your home is to the north.",
+		n_to milw_street,
+		s_to mon_mid;
+
+Room	mon_mid "Monona Drive, by a weathered strip-mall"
+	with	description "Monona drive becomes more suburban as it heads south, but there is still character in the businesses here. A neighborhood pizzeria has recently moved into this location.",
+		n_to mon_cot;
+
+Room	etown "Northeast edge of town"
+	with	description "This is the northeast edge of town, by the shopping mall and the interstate. It is mostly lacking in the distinctive charms of the rest of the city. The usual reason for being out here is to visit the 24-hour restaurant whose sign faces the highway, glowing like a green beacon.",
+		sw_to milw_street;
+
+Room	home "Inside my house"
+	with	name 'home' 'residence' 'house',
+			description "This is a modest one-story house, cluttered by a decade of being lived-in. Your Plan 9 terminal is here.",
+		out_to milw_street,
+		d_to basement;
+
+Room	basement "My house, in the basement"
+	with	name 'basement' 'downstairs',
+			description "Your ex-girlfriend used to stay down here, but now the area is mostly storage...and your grid hardware. In the center of the stone floor is a flimsy table with numerous aging computers both under it and on top. A tangle of ethernet and power cables criss-cross the room like spiderwebs.",
+		u_to home;
+
+Decor	farm	"farm" milw_street
+	with 	name 'farm' 'barn' 'corn' 'agriculture' 'field',
+			description "The farm across the street is one of the main reasons you chose to move into this house ten years ago. The way property development goes in Madison, it seems like a miracle that the farmer has held onto this land in the midst of the city. The barn is run-down and decrepit and the field is not yet planted for the season.";
+
+Decor	terminal "terminal" home
+	with	name 'terminal' 'computer' 'plan' 'plan9' 'grid' '9grid' 'system',
+			description "Your terminal glows with a Mondrian-like arrangement of pastel windows, each rio bound into a different namespace. Multiple rc shells are running, acme is open, and several irc channels are available within hubfs.";
+
+Decor	grid "grid" basement
+	with	name 'grid' 'table' 'computer' 'computers' 'cables' 'ethernet' 'webs' 'spiderwebs' 'power' 'desk' '9grid',
+			description "The physical hardware of your grid is cheap and worn. A mixture of no-name hardware and old dell minitowers, the processor speed, RAM, and storage space is all well below the current standard. The software is a different story - your Advanced Namespace Tools weave the physical boxes together into a coordinated whole. Sometimes you feel like the data within, how it is organized and flows, is like a living thing.";
+
+object	wallet "wallet" home
+	with	name 'wallet' 'money',
+			description "An old black leather wallet containing the standard mix of cash, credit cards, and random scraps of paper.";
 
 
 !============================================================================
 ! Entry point routines
 
 [ Initialise;
-    location = street;
+    location = home;
     lookmode = 2;
     "^^The full moon amidst clouds spills milky brightness everywhere.
 Summer is just barely over but the air is still warm and moist. Staci
@@ -123,44 +153,15 @@ and walk across the porch, slipping your arm around her as you turn to
 watch the sky. What had been a low full circle wreathed by clouds is
 higher now and shinining clearly, but no longer full - darkness was
 creeping across the surface as the Moon swung into the path of the
-shadow cast by Earth amidst the Sun's light. You peer upwards together,
-savoring the moment. The night air is sweet and warm, you are with
-someone you love...and the Castle is about to reopen.^^";
+shadow cast by Earth.  You peer upwards together, savoring the moment.
+The night air is sweet and warm, you are with someone you love...and
+the Castle is about to reopen.^^";
 
-];
-
-[ DeathMessage;
-    if (deadflag == 3) print "Your secret identity has been revealed";
-    if (deadflag == 4) print "You have been SHAMEFULLY defeated";
-    if (deadflag == 5) print "You fly away to SAVE the DAY";
-];
-
-[ startup;
-!	InitLibC();
-!	__init_vars_permute();
-!	deadflag = cinvoke(_main);
-	return true;
-];
-
-[ InScope person item;
-    return false;
 ];
 
 !============================================================================
 ! Standard and extended grammar
 
 Include "grammar";
-
-[ ChangeSub;
-    if (noun has pluralname) print "They're";
-    else                     print "That's";
-    " not something you must change to save the day.";
-];
-
-Verb 'change' 'exchange' 'swap' 'swop'
-    * noun                  -> Change;
-
-Extend 'ask'
-    * creature 'for' topic  -> AskFor;
 
 !============================================================================
