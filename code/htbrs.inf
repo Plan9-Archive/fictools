@@ -93,6 +93,17 @@ Room    milw_street "Outside my house"
 		ne_to etown,
 		cant_go "You go for a brief walk in the neighborhood, then return home. You may travel sw, s, ne, or enter your house.";
 
+Room	home "Inside my house"
+	with	name 'home' 'residence' 'house',
+			description "This is a modest one-story house, cluttered by a decade of being lived-in. Your Plan 9 terminal is here, connected to the grid servers downstairs.",
+		out_to milw_street,
+		d_to basement;
+
+Room	basement "My house, in the basement"
+	with	name 'basement' 'downstairs',
+			description "Your ex-girlfriend used to stay down here, but now the area is mostly storage...and your grid hardware. In the center of the dark concrete floor is a flimsy table with numerous aging computers both under it and on top. A tangle of ethernet and power cables criss-cross the room like spiderwebs.",
+		u_to home;
+
 Room	atwood_av "Atwood Avenue, by several shops"
 	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Cosmic Delights, Revolution Cycles, and Absolutely Art. Willy street is to the west, your home is northeast, and Atwood becomes Monona Drive to the southeast.",
 		ne_to milw_street,
@@ -153,28 +164,45 @@ Room	james_madison "James Madison Park, Mendota lakeside"
 
 Room	mon_cot "Monona Drive and Cottage Grove Road"
 	with	description "Traffic is heavy at the intersection of these roads. Nearby is Java Cat Cafe. Monona Drive continues to the south, Atwood Avenue is northwest, and your home is to the north.",
+		in_to java_cat,
+		e_to java_cat,
 		n_to milw_street,
 		nw_to atwood_av,
 		s_to mon_mid;
 
+Room	java_cat "Java Cat Cafe"
+	with	description "Your local cafe has been your comfort for the past several years. Days and sometimes whole weeks would go by where the only people you saw were the baristas here. You always felt accepted here, even when your disheveled appearance and stumbling arthritic gait made you feel awkward in general society. Light streams in through the tall glass windows at the front of the cafe. A display case of homemade gelato flavors is by the door. Numerous cat-themed decorations adorn the walls and counters.",
+		out_to mon_cot,
+		w_to mon_cot;
+
 Room	mon_mid "Monona Drive, by a weathered strip-mall"
-	with	description "Monona drive becomes more suburban as it heads south, but there is still character in the businesses here. A neighborhood pizzeria has recently moved into this location.",
+	with	description "Monona drive becomes more suburban as it heads south, but there is still character in the businesses here. A neighborhood pizzeria has recently moved into this location on the west side of the street.",
+		in_to rossis_pizza,
+		w_to rossis_pizza,
 		n_to mon_cot;
 
+Room	rossis_pizza "Rossi's Pizza and Vintage Arcade"
+	with	description "Memorabilia from classic 50s, 60s, 70s, and 80s movies and tv shows covers the walls of this neighborhood pizzeria. The smell of spicy-sweet tomato sauce and brown-crisp pizza crust fills the air. A lava lamp sits on one of the tables. From the back room, you hear the alluring sound of the 8-bit sound effects of your youth.",
+		out_to mon_mid,
+		e_to mon_mid,
+		in_to rossis_arcade,
+		n_to rossis_arcade;
+
+Room	rossis_arcade "Rossi's Pizza, in the Vintage Arcade room"
+	with	description "A time-warped paradise. Vintage arcade cabinets surround you. The CRT displays glow with color-bleed, the sound effects are a symphonic rhapsody of buzzing lasers, and each machine is a digital poem tattooed on your heart during the 1980s. Back then, you never had enough quarters...but now, you finally do.",
+		out_to rossis_pizza,
+		s_to rossis_pizza;
+
 Room	etown "Northeast edge of town"
-	with	description "This is the northeast edge of town, by the shopping mall and the interstate. It is mostly lacking in the distinctive charms of the rest of the city. The usual reason for being out here is to visit the 24-hour restaurant whose sign faces the highway, glowing like a green beacon.",
+	with	description "This is the northeast edge of town, by the shopping mall and the interstate. It is mostly lacking in the distinctive charms of the rest of the city. The usual reason for being out here is to visit the 24-hour restaurant to the north, whose sign faces the highway, glowing like a green beacon.",
+		in_to eside_hq,
+		n_to eside_hq,
 		sw_to milw_street;
 
-Room	home "Inside my house"
-	with	name 'home' 'residence' 'house',
-			description "This is a modest one-story house, cluttered by a decade of being lived-in. Your Plan 9 terminal is here, connected to the grid servers downstairs.",
-		out_to milw_street,
-		d_to basement;
-
-Room	basement "My house, in the basement"
-	with	name 'basement' 'downstairs',
-			description "Your ex-girlfriend used to stay down here, but now the area is mostly storage...and your grid hardware. In the center of the dark concrete floor is a flimsy table with numerous aging computers both under it and on top. A tangle of ethernet and power cables criss-cross the room like spiderwebs.",
-		u_to home;
+Room	eside_hq "24-hour family restaurant"
+	with	description "This national chain restaurant serves edible food around the clock. During the graveyard shift, the waitstaff are often friendly and interesting people who are bored enough to be curious about whatever conversation you make. There are a few other patrons, a mix of business travelers staying at the nearby hotels, late-night partiers out after the bar, and random eccentrics such as yourself.",
+		out_to etown,
+		s_to etown;
 
 !============================================================================
 ! The room decorations
@@ -226,9 +254,30 @@ the Castle is about to reopen.^^";
 !============================================================================
 ! Other functions
 
+[ Aboutsub;
+	"^Harmonic Time-Bind Ritual Symphony is a game based on my actual lived experience of spring and summer 2013. During that time, I was able to experience my life as a work of interactive fiction created by a brilliant author. I felt that the nature of the quantum multiverse meant that it was factually true that I was a character in novels and songs and videogames in other universes, and I played my role to the hilt. I felt that my manic madness was a gift which I could use for artistic creativity, and that my racing mind was fully up to solving the puzzles that the designer of my reality had laid out for me. It was the most glorious experience imaginable, and by the middle of the summer I felt like I was becoming a kind of Ultima IV-style Avatar of multiversal artistic consciousness and with just a little more spiritual insight and creative freedom, I'd literally be able to unlock the Vishnu-path Extra Arms upgrade for my character, which I might need in case the tentacle in the lake that was a whisker of Cthulhu's Moustache attacked.^
+	^This game was created to share the wild, unbounded joy I felt for those months. Thanks to everyone who was a part of my life during that time, and thank you for playing this work of Interactive Fiction.^";
+];
+
 [ Bindsub;
 	"^You make the bind of ", (name) noun, " on top of ", (name) second, " and the transformation begins...^";
 ];
+
+[ Creditssub;
+	"^Written and programmed by Ben Kidwell (mycroftiv)
+	 ^Co-written and edited and tested by Staci Straw
+	 ^Created in Plan 9 using Inform 6, initial template from Inform Beginner's Guide^";
+];
+
+[ Helpsub;
+	"If you are new to Interactive Fiction, the basic commands are moving around using compass directions (n s e w ne nw se sw up down in out), examining things (x NAME), taking things and looking in your inventory (take NAME, i), and talking to characters (talk to NAME). Please check an internet guide such as this guide by Emily Short:
+^http://inform7.com/learn/eg/dm/IntroductionToIF.pdf 
+^to learn the basics. This game has a few unusual verbs and gameplay possibilities, such as the bind command from the Plan 9 operating system. Specific hints are available if you type hint NAME for hints relevant to an object or location.^";
+];
+
+[ Hintsub;
+	"^Once I make puzzles there will be hints.";
+];	
 
 !============================================================================
 ! Standard and extended grammar
@@ -237,4 +286,8 @@ Include "grammar";
 
 !============================================================================
 
+Verb "about" *	-> About;
 Verb "bind"	*	noun	noun	-> Bind;
+Verb "credits" *	-> Credits;
+Verb "help" *	-> Help;
+Verb "hint" * noun	-> Hint;
