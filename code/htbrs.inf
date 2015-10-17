@@ -31,14 +31,15 @@ with the hum of the night; a slight breeze, crickets.  The bridge to
 the west has been closed for weeks and everything has been quiet and
 still.
 ^
-^You contemplate the past few years of lunacy.  It has been an
-unbelievable adventure since New Year's 2013, when you resolved to
-return to Plan 9 software development.  You weren't trying start a
-revolution; you just wanted something useful to do with your time.
-The VALISpectrum colors, the singing hippie housekeepers, the dock by
-the castle, riding Lunar Lightning to Cosmic Delights and visiting the
-Afterlife, falling in love - everything ensued from making the binds
-of fiction and reality that transformed you into
+^It has been two and a half years of lunacy since New Year's 2013, when
+you made the resolution to return to Plan 9 software development.  You
+weren't trying start a revolution; you just wanted something useful to
+do with your time.  The VALISpectrum colors, the singing hippie
+housekeepers, the dock by the castle, riding Lunar Lightning to Cosmic
+Delights and visiting the Afterlife, falling in love - everything
+ensued from making the binds of fiction and reality that transformed
+you into
+
 ^
 ^THE MOON COMPUTER (Movement 1)
 ^March 11 2013
@@ -80,13 +81,12 @@ Class   Decor
   has   scenery;
 
 !============================================================================
-! The game objects
+! The game locations
 
 Room    milw_street "Outside my house"
 	with	name 'Milwaukee_St.',
-			description [;
-           "Your section of Milwaukee Street is directly across from a small farm which remains as an agricultural island within the city. An open field and a barn are across the street. Toward the southwest is Atwood Street leading toward downtown. Monona Drive is to the south. The edge of town lies toward the northeast.";
-			],
+			description "Your section of Milwaukee Street is directly across from a small farm which remains as an agricultural island within the city. An open field and a barn are across the street. Toward the southwest is Atwood Street leading toward downtown. Monona Drive is to the south. The edge of town lies toward the northeast.",
+		before [; enter: PlayerTo(home); return true;],
 		in_to home,
 		sw_to atwood_av,
 		s_to mon_cot,
@@ -94,13 +94,67 @@ Room    milw_street "Outside my house"
 		cant_go "You go for a brief walk in the neighborhood, then return home. You may travel sw, s, ne, or enter your house.";
 
 Room	atwood_av "Atwood Avenue, by several shops"
-	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Cosmic Delights, Revolution Cycles, and Absolutely Art",
-		ne_to milw_street;
+	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Cosmic Delights, Revolution Cycles, and Absolutely Art. Willy street is to the west, your home is northeast, and Atwood becomes Monona Drive to the southeast.",
+		ne_to milw_street,
+		se_to mon_cot,
+		w_to willy_east;
+
+Room	willy_east "Willy Street, east end"
+	with	description "The east end of Williamson street is vibrant with a wide assortment stores and an eclectic mix of local pedestrians and potential time travelers. Traffic is thick around the Willy St. grocery co-op, a neighborhood institution.",
+		s_to willy_coop,
+		in_to willy_coop,
+		e_to atwood_av,
+		w_to willy_west;
+
+Room	willy_coop "Willy St. Grocery Co-op"
+	with	description "The Willy street co-op has been selling organic foods and Dr. Bronner's magic soaps to the local crunchies for decades.",
+		out_to willy_east,
+		n_to willy_east;
+
+Room	willy_west "Willy Street, west end"
+	with	description "The west end of Williamson street is where the east side of Madison ends and the downtown area begins. A tangle of memories from different decades of your life is woven into the landscape of the city here. Mother Fool's coffeeshop is on the south side of the street, radiating bohemian charm acquired from decades of service to local culture. John Nolen drives curves around the lake to the west, and the Capitol Square is northwest.",
+		s_to mother_fools,
+		in_to mother_fools,
+		e_to willy_east,
+		w_to john_nolen,
+		nw_to cap_square;
+
+Room	mother_fools "Mother Fool's Coffeeshop"
+	with	description "Small, funky, and redolent of the blood sweat and tears of artists trying to transform caffeine into inspiration.",
+		n_to willy_west,
+		out_to willy_west;
+
+Room	john_nolen "John Nolen Drive"
+	with	description "Adjacent to lake Monona, John Nolen Drive is a wide multi-lane road which passes underneath the curved contours of the Monona Terrace convention center. The view from across the lake looking toward downtown is Madison's skyline-postcard view. A heavily used bike path teems with cyclists and joggers. The Capitol square is north, State Street is to the northwest, and the Miffyland residential neighborwood is west.",
+		n_to cap_square,
+		nw_to state_street,
+		w_to miffyland;
+
+Room	cap_square "Capitol Square"
+	with	description "On a hill in the center of downtown, the Capitol building is a smaller imitation of the federal Capitol building in Washington D.C. The street grid converges to a perfect square around it, and it acts as the 0,0 origin of the street numbering system. Various rumors and legends are passed around the local countercultural community - it is claimed to be built on top of an ancient sacred spring. You remember being a teenager and carrying out the ritual of ingesting psychedelics and using your rights as a citizen to enter the building and lay flat in the center of the marble floor, staring upwards into the dome and watching the mural melt and transform. Notable streets and landmarks lie south, west, north, and southeast.",
+		se_to willy_west,
+		s_to john_nolen,
+		w_to state_street,
+		n_to james_madison;
+
+Room	state_street "State Street"
+	with	description "The downtown and campus are focused on this pedestrian-only open air shopping mall. Dozens of shops and throngs of pedestrians create a big-city feel for a few blocks. The proximity of the large state university campus means the crowd is quite young, and weekend nights are often a mix of the charming antics of local eccentrics with less charming rowdy sophomoric intoxication. The Miffyland neighborhood is south, the Capitol is east.",
+		s_to miffyland,
+		e_to cap_square;
+
+Room	miffyland "Miffyland, the student ghetto"
+	with	description "This small residential neighborhood is a mix of old quasi-victorian houses subdivided into apartments, and more recent larger apartment buildings. Many university students move here after their time in the dorms, and on summer nights the porches are full of young people taking a break from their studies with the traditional libations of beer and weed. You lived here yourself about fifteen years ago. State Street is north, and John Nolen Drive is east.",
+		e_to john_nolen,
+		n_to state_street;
+		
+Room	james_madison "James Madison Park, Mendota lakeside"
+	with	description "A wide park on the shore of Lake Mendota, this is often a perfect place. Gulls circle on wind currents above the waves that break against the shore. A frisbee floats back and forth between a pair of baseball caps. During summer, sunbathers appear like flowers on the grass. The Capitol Square is to the south.",
+		s_to cap_square;
 
 Room	mon_cot "Monona Drive and Cottage Grove Road"
-	with	name "Monona&Cottage",
-			description "Traffic is heavy at the intersection of these roads. Nearby is Java Cat Cafe. Monona Drive continues to the south, and your home is to the north.",
+	with	description "Traffic is heavy at the intersection of these roads. Nearby is Java Cat Cafe. Monona Drive continues to the south, Atwood Avenue is northwest, and your home is to the north.",
 		n_to milw_street,
+		nw_to atwood_av,
 		s_to mon_mid;
 
 Room	mon_mid "Monona Drive, by a weathered strip-mall"
@@ -113,18 +167,25 @@ Room	etown "Northeast edge of town"
 
 Room	home "Inside my house"
 	with	name 'home' 'residence' 'house',
-			description "This is a modest one-story house, cluttered by a decade of being lived-in. Your Plan 9 terminal is here.",
+			description "This is a modest one-story house, cluttered by a decade of being lived-in. Your Plan 9 terminal is here, connected to the grid servers downstairs.",
 		out_to milw_street,
 		d_to basement;
 
 Room	basement "My house, in the basement"
 	with	name 'basement' 'downstairs',
-			description "Your ex-girlfriend used to stay down here, but now the area is mostly storage...and your grid hardware. In the center of the stone floor is a flimsy table with numerous aging computers both under it and on top. A tangle of ethernet and power cables criss-cross the room like spiderwebs.",
+			description "Your ex-girlfriend used to stay down here, but now the area is mostly storage...and your grid hardware. In the center of the dark concrete floor is a flimsy table with numerous aging computers both under it and on top. A tangle of ethernet and power cables criss-cross the room like spiderwebs.",
 		u_to home;
+
+!============================================================================
+! The room decorations
 
 Decor	farm	"farm" milw_street
 	with 	name 'farm' 'barn' 'corn' 'agriculture' 'field',
 			description "The farm across the street is one of the main reasons you chose to move into this house ten years ago. The way property development goes in Madison, it seems like a miracle that the farmer has held onto this land in the midst of the city. The barn is run-down and decrepit and the field is not yet planted for the season.";
+
+Decor	house	"house" milw_street
+	with	name 'house' 'home' 'dwelling',
+			description "Your house is on the corner of the block. It is painted a light yellow and has a fenced in side yard. You have lived here for the past decade.";
 
 Decor	terminal "terminal" home
 	with	name 'terminal' 'computer' 'plan' 'plan9' 'grid' '9grid' 'system',
@@ -133,6 +194,9 @@ Decor	terminal "terminal" home
 Decor	grid "grid" basement
 	with	name 'grid' 'table' 'computer' 'computers' 'cables' 'ethernet' 'webs' 'spiderwebs' 'power' 'desk' '9grid',
 			description "The physical hardware of your grid is cheap and worn. A mixture of no-name hardware and old dell minitowers, the processor speed, RAM, and storage space is all well below the current standard. The software is a different story - your Advanced Namespace Tools weave the physical boxes together into a coordinated whole. Sometimes you feel like the data within, how it is organized and flows, is like a living thing.";
+
+!============================================================================
+! The takable objects
 
 object	wallet "wallet" home
 	with	name 'wallet' 'money',
@@ -160,8 +224,17 @@ the Castle is about to reopen.^^";
 ];
 
 !============================================================================
+! Other functions
+
+[ Bindsub;
+	"^You make the bind of ", (name) noun, " on top of ", (name) second, " and the transformation begins...^";
+];
+
+!============================================================================
 ! Standard and extended grammar
 
 Include "grammar";
 
 !============================================================================
+
+Verb "bind"	*	noun	noun	-> Bind;
