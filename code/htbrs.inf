@@ -105,10 +105,33 @@ Room	basement "My house, in the basement"
 		u_to home;
 
 Room	atwood_av "Atwood Avenue, by several shops"
-	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Cosmic Delights, Revolution Cycles, and Absolutely Art. Willy street is to the west, your home is northeast, and Atwood becomes Monona Drive to the southeast.",
+	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Cosmic Delights, Revolution Cycles, and Absolutely Art. You can reach the stores to the north. Willy street is to the west, your home is northeast, and Atwood becomes Monona Drive to the southeast.",
+		n_to atwood_shops,
 		ne_to milw_street,
 		se_to mon_cot,
 		w_to willy_east;
+
+Room	atwood_shops "Atwood and Ohio shopping block"
+	with	description "Several appealing establishments are clustered here. On the east end of the block is Cosmic Delights, offering crystals, minerals, jewelry, stickers, incense, smoking accessories, tapestries, and other hippie-style woo-woo. Northeast is a small doorway with a Coming Soon sign. North is Revolution Cycles, your local counterculture-friendly bike store. To the west is Absolutely Art, a small gallery store exhibiting the arts and crafts of several local artists. You can rejoin the flow of Atwood Avenue to the south.",
+		s_to atwood_av,
+		e_to cosmic_delights,
+		n_to revolution_cycles,
+		w_to absolutely_art;
+
+Room	cosmic_delights "Cosmic Delights"
+	with	description "This store buzzes with mystic energies. Complex artworks with twisting lines interweaving runic symbols adorn the walls. A glass display case of crystals, jewelry, and small sculptures is against the far wall. Bins of polished minerals are in the center, along with sage and incense. Buttons and stickers with provocative slogans, tapestries featuring Grateful Dead iconography, water pipes and rolling papers, printed guides to meditation and higher consciousness...your eyes can hardly absorb the profusion of beautiful, wonderful, enchanting artifacts of the paisley-and-patchouli tribe.",
+		out_to atwood_shops,
+		w_to atwood_shops;
+
+Room	revolution_cycles "Revolution Cycles"
+	with	description "Madison has many bike shops, but this is the one for you. A wide variety of bicycles and accessories fills the front of the store, and a workshop is toward the rear. Someone is working on a partly disassembled bicycle on a maintenance mount.",
+		out_to atwood_shops,
+		s_to atwood_shops;
+
+Room	absolutely_art "Absolutely Art"
+	with	description "This local gallery has a mix of prints, paintings, and sculptures on display.",
+		out_to atwood_shops,
+		e_to atwood_shops;		
 
 Room	willy_east "Willy Street, east end"
 	with	description "The east end of Williamson street is vibrant with a wide assortment stores and an eclectic mix of local pedestrians and potential time travelers. Traffic is thick around the Willy St. grocery co-op, a neighborhood institution.",
@@ -136,10 +159,11 @@ Room	mother_fools "Mother Fool's Coffeeshop"
 		out_to willy_west;
 
 Room	john_nolen "John Nolen Drive"
-	with	description "Adjacent to lake Monona, John Nolen Drive is a wide multi-lane road which passes underneath the curved contours of the Monona Terrace convention center. The view from across the lake looking toward downtown is Madison's skyline-postcard view. A heavily used bike path teems with cyclists and joggers. The Capitol square is north, State Street is to the northwest, and the Miffyland residential neighborwood is west.",
+	with	description "Adjacent to lake Monona, John Nolen Drive is a wide multi-lane road which passes underneath the curved contours of the Monona Terrace convention center. The view from across the lake looking toward downtown is Madison's skyline-postcard view. A heavily used bike path teems with cyclists and joggers. The Capitol square is north, State Street is to the northwest, Williamson St. to the east, and the Miffyland residential neighborwood is west.",
 		n_to cap_square,
 		nw_to state_street,
-		w_to miffyland;
+		w_to miffyland,
+		e_to willy_west;
 
 Room	cap_square "Capitol Square"
 	with	description "On a hill in the center of downtown, the Capitol building is a smaller imitation of the federal Capitol building in Washington D.C. The street grid converges to a perfect square around it, and it acts as the 0,0 origin of the street numbering system. Various rumors and legends are passed around the local countercultural community - it is claimed to be built on top of an ancient sacred spring. You remember being a teenager and carrying out the ritual of ingesting psychedelics and using your rights as a citizen to enter the building and lay flat in the center of the marble floor, staring upwards into the dome and watching the mural melt and transform. Notable streets and landmarks lie south, west, north, and southeast.",
@@ -164,6 +188,11 @@ Room	james_madison "James Madison Park, Mendota lakeside"
 
 Room	mon_cot "Monona Drive and Cottage Grove Road"
 	with	description "Traffic is heavy at the intersection of these roads. Nearby is Java Cat Cafe. Monona Drive continues to the south, Atwood Avenue is northwest, and your home is to the north.",
+		before [; go:
+			if (noun ~= s_obj) return false;
+			if (pendant has worn) return false;
+			"You need to find a talisman to wear to continue south.";
+		],
 		in_to java_cat,
 		e_to java_cat,
 		n_to milw_street,
@@ -230,6 +259,11 @@ object	wallet "wallet" home
 	with	name 'wallet' 'money',
 			description "An old black leather wallet containing the standard mix of cash, credit cards, and random scraps of paper.";
 
+object	pendant "pendant" cosmic_delights
+	with	name 'pendant' 'loonie' 'power' 'revolution',
+			description "The pendant is made from orgone plastic in the shape of a moon-face. The front is colored brownish-gold with a faint sparkle, the back is transparent and shows small pieces of stone and metal embedded within. It hangs from a black cloth cord.",
+		has clothing;
+
 
 !============================================================================
 ! Entry point routines
@@ -266,7 +300,7 @@ the Castle is about to reopen.^^";
 [ Creditssub;
 	"^Written and programmed by Ben Kidwell (mycroftiv)
 	 ^Co-written and edited and tested by Staci Straw
-	 ^Created in Plan 9 using Inform 6, initial template from Inform Beginner's Guide^";
+	 ^Initial template from Inform Beginner's Guide^";
 ];
 
 [ Helpsub;
