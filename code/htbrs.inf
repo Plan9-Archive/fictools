@@ -51,48 +51,54 @@ Release 0;  Serial "151014";    ! for keeping track of public releases
 Include "parser";
 
 Object  LibraryMessages         ! must be defined between Parser and VerbLib
-  with  before [;
-          Buy:    "You think about money and dream of transforming the economic system with Plan 9 unique digital object alternative community currencies.";
-          Dig:    "In another reality, your dog-self burrows deeply within the Earth, uncovering exactly the items needed to continue your journey. In this world, you accomplish nothing.";
-          Pray:   "You offer prayers to many Gods as well as the laws of physics.";
-          Sing:   "You start with a bit of Mozart's Marriage of Figaro, move on to a few of your favorite Wu-Tang verses, and conclude with a heartfelt imitation of how IU would sound singing Ripple by the Grateful Dead.";
-          Sleep:  "You drift for awhile into another realm, a tourist in one of the uncountable branches of the multiverse.";
-          Sorry:  "Rather than being caught up in apologies and regrets, you try to maintain focus on future improvement.";
-          Strong: "Say that again, and louder! Shout it! Let the world know how you feel!";
-          Swim:   "The Madison lakes are beautiful to look at, and some people have the immune system required to cope with algae and bacteria, but you prefer to sit on the shore and watch the chromatic flickering of the ripples.";
-          Miscellany:
-            if (lm_n == 38)
-                "That action is outside the scope of this simulation.";
-            if (lm_n == 39)
-                "This game world does not provide that level of detail.";
-        ];
+	with	before [;
+	Buy:    "You think about money and dream of transforming the economic system with Plan 9 unique digital object alternative community currencies.";
+	Climb:	"Some rise...some fall...some climb...to get to Terrapin. (Footnote 1)";
+	Dig:    "In another reality, your dog-self burrows deeply within the Earth, uncovering exactly the items needed to continue your journey. In this world, you accomplish nothing.";
+	Pray:   "You offer prayers to many Gods as well as the laws of physics.";
+	Sing:   "You start with a bit of Mozart's Marriage of Figaro, move on to a few of your favorite Wu-Tang verses, and conclude with a heartfelt imitation of how IU would sound singing Ripple by the Grateful Dead.";
+	Sleep:  "You drift for awhile into another realm, a tourist in one of the uncountable branches of the multiverse.";
+	Sorry:  "Rather than being caught up in apologies and regrets, you try to maintain focus on future improvement.";
+	Strong: "Say that again, and louder! Shout it! Let the world know how you feel!";
+	Swim:   "The Madison lakes are beautiful to look at, and some people have the immune system required to cope with algae and bacteria, but you prefer to sit on the shore and watch the chromatic flickering of the ripples.";
+	Miscellany:
+		if (lm_n == 38)
+			"That action is outside the scope of this simulation.";
+		if (lm_n == 39)
+			"This game world does not provide that level of detail.";
+		];
 
 Include "verblib";
 
 !============================================================================
+! Global variables
+
+Global antsreleased = 0;
+
+!============================================================================
 ! Object classes
 
-Class   Room
-  with  description "UNIMPLEMENTED ROOM DESCRIPTION",
-  has   light;
+Class	Room
+	with	description "UNIMPLEMENTED ROOM DESCRIPTION",
+	has	light;
 
-Class   Decor
-  with  description "UNIMPLEMENTED DECOR DESCRIPTION",
-  has   scenery;
+Class	Decor
+	with	description "UNIMPLEMENTED DECOR DESCRIPTION",
+	has	scenery;
 
 Class	Prop
-  with	description "UNIMPLEMENTED PROP DESCRIPTION",
-  has	static;
+	with	description "UNIMPLEMENTED PROP DESCRIPTION",
+	has	static;
 
 Class	Character
-  with	description "UNIMPLEMENTED ACTOR DESCRIPTION",
-  has	proper animate;
+	with	description "UNIMPLEMENTED ACTOR DESCRIPTION",
+	has	proper animate;
 
 !============================================================================
 ! The game locations
 
 Room    milw_street "Outside my house"
-	with	name 'Milwaukee_St.',
+	with	name 'milwaukee' 'street',
 			description "Your section of Milwaukee Street is directly across from a small farm which remains as an agricultural island within the city. An open field and a barn are across the street. Toward the southwest is Atwood Street leading toward downtown. Monona Drive is to the south. The edge of town lies toward the northeast.",
 		before [; enter: PlayerTo(home); return true;],
 		in_to home,
@@ -107,54 +113,70 @@ Room	home "Inside my house"
 			print "This is a modest one-story house, cluttered by a decade of being lived-in. Your Plan 9 terminal is here, connected to the grid servers downstairs.";
 			if (self hasnt visited)
 				print "^After working obsessively since the New Year, you are finally ready to officially announce and release your software. You feel tense yet eager anticipation for the reaction from other Plan 9 users. When you are ready to unleash the Advanced Namespace Tools on the world, type 'release ANTS'"; ],
+		before [; go:
+			if (noun ~= out_obj) return false;
+			if (antsreleased == 1) return false;
+			"You are ready to release ANTS and you need to do that before leaving.";
+		],
 		out_to milw_street,
-		d_to basement;
+		d_to basement,
+		cant_go "You can go down to the basement or out to Milwaukee St.";
 
 Room	basement "My house, in the basement"
 	with	name 'basement' 'downstairs',
 			description "Your ex-girlfriend used to stay down here, but now the area is mostly storage...and your grid hardware. In the center of the dark concrete floor is a flimsy table with numerous aging computers both under it and on top. A tangle of ethernet and power cables criss-cross the room like spiderwebs.",
-		u_to home;
+		u_to home,
+		cant_go "The only exit is up.";
 
 Room	atwood_av "Atwood Avenue, by several shops"
-	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Astral Enchantments, Turning Wheel Cycles, and Essentially Art. You can reach the stores to the north. Willy street is to the west, your home is northeast, and Atwood becomes Monona Drive to the southeast.",
+	with	name 'atwood' 'shops' 'ohio' 'shopping' 'block' 'street' 'avenue',
+			description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Astral Enchantments, Turning Wheel Cycles, and Essentially Art. You can reach the stores to the north. Willy street is to the west, your home is northeast, and Atwood becomes Monona Drive to the southeast.",
 		n_to atwood_shops,
 		ne_to milw_street,
 		se_to mon_cot,
-		w_to willy_east;
+		w_to willy_east,
+		cant_go "You can go w, n, ne, and se.";
 
 Room	atwood_shops "Atwood and Ohio shopping block"
-	with	description "Several appealing establishments are clustered here. On the east end of the block is Astral Enchantments, offering crystals, minerals, jewelry, stickers, incense, smoking accessories, tapestries, and other hippie-style woo-woo. Northeast is a small doorway with a Coming Soon sign. North is Turning Wheel Cycles, your local counterculture-friendly bike store. To the west is Essentially Art, a small gallery store exhibiting the arts and crafts of several local artists. You can rejoin the flow of Atwood Avenue to the south.",
+	with	name 'atwood' 'shops' 'ohio' 'shopping' 'block' 'street' 'avenue',
+			description "Several appealing establishments are clustered here. On the east end of the block is Astral Enchantments, offering crystals, minerals, jewelry, stickers, incense, smoking accessories, tapestries, and other hippie-style woo-woo. Northeast is a small doorway with a Coming Soon sign. North is Turning Wheel Cycles, your local counterculture-friendly bike store. To the west is Essentially Art, a small gallery store exhibiting the arts and crafts of several local artists. You can rejoin the flow of Atwood Avenue to the south.",
 		s_to atwood_av,
 		e_to astral_enchantments,
 		n_to turning_wheel,
-		w_to essentially_art;
+		w_to essentially_art,
+		cant_go "You can go n, e, s, and w.";
 
 Room	astral_enchantments "Astral Enchantments"
 	with	description "This store buzzes with mystic energies. Complex artworks with twisting lines interweaving runic symbols adorn the walls. A glass display case of crystals, jewelry, and small sculptures is against the far wall. Bins of polished minerals are in the center, along with sage and incense. Buttons and stickers with provocative slogans, tapestries featuring Grateful Dead iconography, water pipes and rolling papers, printed guides to meditation and higher consciousness...your eyes can hardly absorb the profusion of beautiful, wonderful, enchanting artifacts of the paisley-and-patchouli tribe.",
 		out_to atwood_shops,
-		w_to atwood_shops;
+		w_to atwood_shops,
+		cant_go "The only exit is out.";
 
 Room	turning_wheel "Turning Wheel Cycles"
 	with	description "Madison has many bike shops, but this is the one for you. A wide variety of bicycles and accessories fills the front of the store, and a workshop is toward the rear. Someone is working on a partly disassembled bicycle on a maintenance mount.",
 		out_to atwood_shops,
-		s_to atwood_shops;
+		s_to atwood_shops,
+		cant_go "The only exit is out.";
 
 Room	essentially_art "Essentially Art"
 	with	description "This local gallery has a mix of prints, paintings, and sculptures on display.",
 		out_to atwood_shops,
-		e_to atwood_shops;		
+		e_to atwood_shops,
+		cant_go "The only exit is out.";		
 
 Room	willy_east "Willy Street, east end"
 	with	description "The east end of Williamson street is vibrant with a wide assortment stores and an eclectic mix of local pedestrians and potential time travelers. Traffic is thick around the Willy St. grocery co-op, a neighborhood institution.",
 		s_to willy_coop,
 		in_to willy_coop,
 		e_to atwood_av,
-		w_to willy_west;
+		w_to willy_west,
+		cant_go "You can go e, w, or in.";
 
 Room	willy_coop "Willy St. Grocery Co-op"
 	with	description "The Willy street co-op has been selling organic foods and Dr. Bronner's magic soaps to the local crunchies for decades.",
 		out_to willy_east,
-		n_to willy_east;
+		n_to willy_east,
+		cant_go "The only exit is out.";
 
 Room	willy_west "Willy Street, west end"
 	with	description "The west end of Williamson street is where the east side of Madison ends and the downtown area begins. A tangle of memories from different decades of your life is woven into the landscape of the city here. Lady Wisdom's coffeeshop is on the south side of the street, radiating bohemian charm acquired from decades of service to local culture. John Nolen drives curves around the lake to the west, and the Capitol Square is northwest.",
@@ -162,40 +184,47 @@ Room	willy_west "Willy Street, west end"
 		in_to lady_wisdom,
 		e_to willy_east,
 		w_to john_nolen,
-		nw_to cap_square;
+		nw_to cap_square,
+		cant_go "You can go e, nw, w, or in.";
 
 Room	lady_wisdom "Lady Wisdom's Coffeeshop"
 	with	description "Small, funky, and redolent of the blood sweat and tears of artists trying to transform caffeine into inspiration.",
 		n_to willy_west,
-		out_to willy_west;
+		out_to willy_west,
+		cant_go "The only exit is out.";
 
 Room	john_nolen "John Nolen Drive"
 	with	description "Adjacent to lake Monona, John Nolen Drive is a wide multi-lane road which passes underneath the curved contours of the Monona Terrace convention center. The view from across the lake looking toward downtown is Madison's skyline-postcard view. A heavily used bike path teems with cyclists and joggers. The Capitol square is north, State Street is to the northwest, Williamson St. to the east, and the Miffyland residential neighborwood is west.",
 		n_to cap_square,
 		nw_to state_street,
 		w_to miffyland,
-		e_to willy_west;
+		e_to willy_west,
+		cant_go "You can go n, nw, w, or e.";
 
 Room	cap_square "Capitol Square"
 	with	description "On a hill in the center of downtown, the Capitol building is a smaller imitation of the federal Capitol building in Washington D.C. The street grid converges to a perfect square around it, and it acts as the 0,0 origin of the street numbering system. Various rumors and legends are passed around the local countercultural community - it is claimed to be built on top of an ancient sacred spring. You remember being a teenager and carrying out the ritual of ingesting psychedelics and using your rights as a citizen to enter the building and lay flat in the center of the marble floor, staring upwards into the dome and watching the mural melt and transform. Notable streets and landmarks lie south, west, north, and southeast.",
 		se_to willy_west,
 		s_to john_nolen,
 		w_to state_street,
-		n_to james_madison;
+		n_to james_madison,
+		cant_go "You can go n, w, s, or se.";
 
 Room	state_street "State Street"
 	with	description "The downtown and campus are focused on this pedestrian-only open air shopping mall. Dozens of shops and throngs of pedestrians create a big-city feel for a few blocks. The proximity of the large state university campus means the crowd is quite young, and weekend nights are often a mix of the charming antics of local eccentrics with less charming rowdy sophomoric intoxication. The Miffyland neighborhood is south, the Capitol is east.",
 		s_to miffyland,
-		e_to cap_square;
+		e_to cap_square,
+		cant_go "You can go s or e.";
 
 Room	miffyland "Miffyland, the student ghetto"
 	with	description "This small residential neighborhood is a mix of old quasi-victorian houses subdivided into apartments, and more recent larger apartment buildings. Many university students move here after their time in the dorms, and on summer nights the porches are full of young people taking a break from their studies with the traditional libations of beer and weed. You lived here yourself about fifteen years ago. State Street is north, and John Nolen Drive is east.",
 		e_to john_nolen,
-		n_to state_street;
+		n_to state_street,
+		cant_go "You can go n or e.";
 		
 Room	james_madison "James Madison Park, Mendota lakeside"
 	with	description "A wide park on the shore of Lake Mendota, this is often a perfect place. Gulls circle on wind currents above the waves that break against the shore. A frisbee floats back and forth between a pair of baseball caps. During summer, sunbathers appear like flowers on the grass. The Capitol Square is to the south.",
-		s_to cap_square;
+		s_to cap_square,
+		cant_go "You can go s.";
 
 Room	mon_cot "Monona Drive and Cottage Grove Road"
 	with	description "Traffic is heavy at the intersection of these roads. Nearby is Coffee Lion Cafe. Monona Drive continues to the south, Atwood Avenue is northwest, and your home is to the north.",
@@ -208,41 +237,70 @@ Room	mon_cot "Monona Drive and Cottage Grove Road"
 		e_to coffee_lion,
 		n_to milw_street,
 		nw_to atwood_av,
-		s_to mon_mid;
+		s_to mon_mid,
+		cant_go "Exits are n, nw, s, and in.";
 
 Room	coffee_lion "Coffee Lion Cafe"
 	with	description "Your local cafe has been your comfort for the past several years. Days and sometimes whole weeks would go by where the only people you saw were the baristas here. You always felt accepted here, even when your disheveled appearance and stumbling arthritic gait made you feel awkward in general society. Light streams in through the tall glass windows at the front of the cafe. A display case of homemade gelato flavors is by the door. Numerous cat-themed decorations adorn the walls and counters.",
 		out_to mon_cot,
-		w_to mon_cot;
+		w_to mon_cot,
+		cant_go "The only exit is out.";
 
 Room	mon_mid "Monona Drive, by a weathered strip-mall"
 	with	description "Monona drive becomes more suburban as it heads south, but there is still character in the businesses here. A neighborhood pizzeria has recently moved into this location on the west side of the street.",
 		in_to rossinis_pizza,
 		w_to rossinis_pizza,
-		n_to mon_cot;
+		n_to mon_cot,
+		cant_go "You can go n or in.";
 
 Room	rossinis_pizza "Rossini's Pizza and Vintage Arcade"
 	with	description "Memorabilia from classic 50s, 60s, 70s, and 80s movies and tv shows covers the walls of this neighborhood pizzeria. The smell of spicy-sweet tomato sauce and brown-crisp pizza crust fills the air. A lava lamp sits on one of the tables. From the back room, you hear the alluring sound of the 8-bit sound effects of your youth.",
 		out_to mon_mid,
 		e_to mon_mid,
 		in_to rossinis_arcade,
-		n_to rossinis_arcade;
+		n_to rossinis_arcade,
+		cant_go "You can go out to the street or in to the vintage arcade room.";
 
 Room	rossinis_arcade "Rossini's Pizza, in the Vintage Arcade room"
 	with	description "A time-warped paradise. Vintage arcade cabinets surround you. The CRT displays glow with color-bleed, the sound effects are a symphonic rhapsody of buzzing lasers, and each machine is a digital poem tattooed on your heart during the 1980s. Back then, you never had enough quarters...but now, you finally do.",
 		out_to rossinis_pizza,
-		s_to rossinis_pizza;
+		s_to rossinis_pizza,
+		cant_go "The only exit is out.";
 
 Room	etown "Northeast edge of town"
 	with	description "This is the northeast edge of town, by the shopping mall and the interstate. It is mostly lacking in the distinctive charms of the rest of the city. The usual reason for being out here is to visit the 24-hour restaurant to the north, whose sign faces the highway, glowing like a green beacon.",
 		in_to eside_hq,
 		n_to eside_hq,
-		sw_to milw_street;
+		sw_to milw_street,
+		cant_go "You can go n, sw, or in.";
 
 Room	eside_hq "24-hour family restaurant"
 	with	description "This national chain restaurant serves edible food around the clock. During the graveyard shift, the waitstaff are often friendly and interesting people who are bored enough to be curious about whatever conversation you make. There are a few other patrons, a mix of business travelers staying at the nearby hotels, late-night partiers out after the bar, and random eccentrics such as yourself.",
 		out_to etown,
-		s_to etown;
+		s_to etown,
+		cant_go "The only exit is out.";
+
+!============================================================================
+! The characters
+
+Character	strawberry "Strawberry" basement
+	with	name 'strawberry' 'cat' 'kitty' 'kitten',
+			description "Your cat is small, orange with white chest and paws, female, and feisty.",
+	action_count 0,
+	each_turn [; self.action_count = self.action_count + 1;
+		switch(self.action_count) {
+		1: "Strawberry looks at you with mild curiosity.";
+		2: "Strawberry perches atop the router and studies you.";
+		3: "Strawberry deftly steps through the maze of cords and vanishes behind some boxes.";
+		4: "Strawberry's head peeks out from behind one of the grid computers.";
+		5: "Strawberry meows and sharpens her claws on the carpeting of the stairway.";
+		6: "Strawberry's tail brushes by your leg as she sniffs at your toes.";
+		7: "Strawberry nimbly hops up onto the computer desk, thankfully avoiding the keyboards.";
+		8: "Strawberry is standing still, tail twitching slightly.";
+		9: "Strawberry licks a paw and washes her forehead with it.";
+		default: "Strawberry is curled up and napping in an empty cardboard box."; };
+	],
+	has	female;
 
 !============================================================================
 ! The room decorations
@@ -258,6 +316,11 @@ Decor	house	"house" milw_street
 Decor	grid "grid" basement
 	with	name 'grid' 'table' 'computer' 'computers' 'cables' 'ethernet' 'webs' 'spiderwebs' 'power' 'desk' '9grid',
 			description "The physical hardware of your grid is cheap and worn. A mixture of no-name hardware and old dell minitowers, the processor speed, RAM, and storage space is all well below the current standard. The software is a different story - your Advanced Namespace Tools weave the physical boxes together into a coordinated whole. Sometimes you feel like the data within, how it is organized and flows, is like a living thing.";
+
+Decor	ants "ANTS"
+	with	name 'ants' 'advanced' 'namespace' 'tools' 'software',
+			description "The Advanced Namespace Tools software is designed to build on Plan 9's strengths, using per-process namespace manipulation to allow multiple independent computing environments to coexist and share data easily. The central concept is breaking hierarchical dependencies and allowing free-form interconnections.",
+		found_in home basement;
 
 !============================================================================
 ! The immobile objects
@@ -277,23 +340,6 @@ object	pendant "pendant" astral_enchantments
 	with	name 'pendant' 'loonie' 'power' 'revolution',
 			description "The pendant is made from orgone plastic in the shape of a moon-face. The front is colored brownish-gold with a faint sparkle, the back is transparent and shows small pieces of stone and metal embedded within. It hangs from a black cloth cord.",
 		has clothing;
-
-!============================================================================
-! The characters
-
-Character	strawberry "Strawberry" basement
-	with	name 'strawberry' 'cat' 'kitty' 'kitten',
-			description "Your cat is small, orange with white chest and paws, female, and feisty.",
-	action_count 0,
-	each_turn [; self.action_count = self.action_count + 1;
-		switch(self.action_count) {
-		1: "Strawberry looks at you with mild curiosity.";
-		2: "Strawberry perches atop the router and studies you.";
-		3: "Strawberry deftly steps through the maze of cords and vanishes behind some boxes.";
-		4: "Strawberry's head peeks out from behind one of the grid computers.";
-		default: "Strawberry is curled up and napping in an empty cardboard box."; };
-	],
-	has	female;
 
 !============================================================================
 ! Entry point routines
@@ -334,6 +380,14 @@ the Castle is about to reopen.^^";
 	 ^Initial template from Inform Beginner's Guide^";
 ];
 
+[ Footnotesub;
+	switch(noun) {
+	1: "Lyrics by Robert Hunter, music by Jerry Garcia, Terrapin Station 1977.";
+	2: "There is no footnote 2.";
+	default: "Probably a special-case of the Navier-Stokes equations.";
+	};
+];
+
 [ Helpsub;
 	"If you are new to Interactive Fiction, the basic commands are moving around using compass directions (n s e w ne nw se sw up down in out), examining things (x NAME), taking things and looking in your inventory (take NAME, i), and talking to characters (talk to NAME). Please check an internet guide such as this guide by Emily Short:
 ^http://inform7.com/learn/eg/dm/IntroductionToIF.pdf 
@@ -342,6 +396,18 @@ the Castle is about to reopen.^^";
 
 [ Hintsub;
 	"^Once I make puzzles there will be hints.";
+];
+
+[ Releasesub;
+	if (antsreleased == 1)
+		"You already released ANTS.";
+	if (noun ~= ants)
+		"What you need to release is ANTS, your Advanced Namespace Tools for Plan 9.";
+	antsreleased = 1;
+	"You have written an announcement and description of your software, and framed it with an imaginary scene between Tanna and Eros, the villains of Plan 9 from Outer Space. You post it to the 9fans mailing list, and wonder how many people will take the time to complete your elaborate tutorials showing how to weave a namespace environment from the resources of several machines. You feel that the past few months of work have produced something that your father, who died last year, would have felt proud of you for achieving. He was a law professor, and he never understood your embrace of the counterculture.^
+	^A few hours later, you are searching for information on some Plan 9 projects you remember reading about a few years ago. In the course of your searches, you stumble upon a recent patent application by a large company that makes use of a familiar concept. A few years earlier, you wrote a 9P persistent-pipe muxer called hubfs, and released it as free software. The patent application from the Joint Consolidated Networking corporation seeks a patent for 9P persistent pipe-muxing, based on a program called Manypipes they had written for a recent supercomputing project.^
+	^You feel a sudden internal change, as if a valve has been opened and a high-pressure jet of intense emotion and information is entering your mind from a direction at right angles to everything. You are a middle-aged, unemployed freak with a basement full of old computers, writing and releasing free software, and then afterwards, a giant corporation under contract to the government implements the same idea and receives a patent on it. Your father taught patent law, helped write a textbook about it, and he would have seen the injustice of the situation.^
+	^You can feel your dead father's mind inside yourself. You spent endless hours talking with him, through decades of life, and you remember how he talked about things, how he thought. He never agreed with your anti-authoritarian radicalism, because he thought the systems of law and society were mostly fair. Seeing how unfair the software patent system was to his own son would have changed his mind though - you can feel it changing inside yourself. Your mind has become a virtual machine, running the computer program of your father's soul alongside your own.";
 ];	
 
 !============================================================================
@@ -354,5 +420,8 @@ Include "grammar";
 Verb "about" *	-> About;
 Verb "bind"	*	noun	noun	-> Bind;
 Verb "credits" *	-> Credits;
+Verb "footnote" *	number	-> Footnote;
 Verb "help" *	-> Help;
 Verb "hint" * noun	-> Hint;
+Verb "release" * noun	-> Release;
+
