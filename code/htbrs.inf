@@ -42,7 +42,7 @@ you into
 
 ^
 ^THE MOON COMPUTER (Movement 1)
-^March 11 2013
+^11 March 2013
 ^
 ^";
 
@@ -80,6 +80,14 @@ Class   Decor
   with  description "UNIMPLEMENTED DECOR DESCRIPTION",
   has   scenery;
 
+Class	Prop
+  with	description "UNIMPLEMENTED PROP DESCRIPTION",
+  has	static;
+
+Class	Character
+  with	description "UNIMPLEMENTED ACTOR DESCRIPTION",
+  has	proper animate;
+
 !============================================================================
 ! The game locations
 
@@ -95,7 +103,10 @@ Room    milw_street "Outside my house"
 
 Room	home "Inside my house"
 	with	name 'home' 'residence' 'house',
-			description "This is a modest one-story house, cluttered by a decade of being lived-in. Your Plan 9 terminal is here, connected to the grid servers downstairs.",
+			description [;
+			print "This is a modest one-story house, cluttered by a decade of being lived-in. Your Plan 9 terminal is here, connected to the grid servers downstairs.";
+			if (self hasnt visited)
+				print "^After working obsessively since the New Year, you are finally ready to officially announce and release your software. You feel tense yet eager anticipation for the reaction from other Plan 9 users. When you are ready to unleash the Advanced Namespace Tools on the world, type 'release ANTS'"; ],
 		out_to milw_street,
 		d_to basement;
 
@@ -105,30 +116,30 @@ Room	basement "My house, in the basement"
 		u_to home;
 
 Room	atwood_av "Atwood Avenue, by several shops"
-	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Cosmic Delights, Revolution Cycles, and Absolutely Art. You can reach the stores to the north. Willy street is to the west, your home is northeast, and Atwood becomes Monona Drive to the southeast.",
+	with	description "Atwood Avenue is one of the streets that defines the character of the near east side. The feel is funky and freak-friendly. Next to you is a cluster of intriguing stores: Astral Enchantments, Turning Wheel Cycles, and Essentially Art. You can reach the stores to the north. Willy street is to the west, your home is northeast, and Atwood becomes Monona Drive to the southeast.",
 		n_to atwood_shops,
 		ne_to milw_street,
 		se_to mon_cot,
 		w_to willy_east;
 
 Room	atwood_shops "Atwood and Ohio shopping block"
-	with	description "Several appealing establishments are clustered here. On the east end of the block is Cosmic Delights, offering crystals, minerals, jewelry, stickers, incense, smoking accessories, tapestries, and other hippie-style woo-woo. Northeast is a small doorway with a Coming Soon sign. North is Revolution Cycles, your local counterculture-friendly bike store. To the west is Absolutely Art, a small gallery store exhibiting the arts and crafts of several local artists. You can rejoin the flow of Atwood Avenue to the south.",
+	with	description "Several appealing establishments are clustered here. On the east end of the block is Astral Enchantments, offering crystals, minerals, jewelry, stickers, incense, smoking accessories, tapestries, and other hippie-style woo-woo. Northeast is a small doorway with a Coming Soon sign. North is Turning Wheel Cycles, your local counterculture-friendly bike store. To the west is Essentially Art, a small gallery store exhibiting the arts and crafts of several local artists. You can rejoin the flow of Atwood Avenue to the south.",
 		s_to atwood_av,
-		e_to cosmic_delights,
-		n_to revolution_cycles,
-		w_to absolutely_art;
+		e_to astral_enchantments,
+		n_to turning_wheel,
+		w_to essentially_art;
 
-Room	cosmic_delights "Cosmic Delights"
+Room	astral_enchantments "Astral Enchantments"
 	with	description "This store buzzes with mystic energies. Complex artworks with twisting lines interweaving runic symbols adorn the walls. A glass display case of crystals, jewelry, and small sculptures is against the far wall. Bins of polished minerals are in the center, along with sage and incense. Buttons and stickers with provocative slogans, tapestries featuring Grateful Dead iconography, water pipes and rolling papers, printed guides to meditation and higher consciousness...your eyes can hardly absorb the profusion of beautiful, wonderful, enchanting artifacts of the paisley-and-patchouli tribe.",
 		out_to atwood_shops,
 		w_to atwood_shops;
 
-Room	revolution_cycles "Revolution Cycles"
+Room	turning_wheel "Turning Wheel Cycles"
 	with	description "Madison has many bike shops, but this is the one for you. A wide variety of bicycles and accessories fills the front of the store, and a workshop is toward the rear. Someone is working on a partly disassembled bicycle on a maintenance mount.",
 		out_to atwood_shops,
 		s_to atwood_shops;
 
-Room	absolutely_art "Absolutely Art"
+Room	essentially_art "Essentially Art"
 	with	description "This local gallery has a mix of prints, paintings, and sculptures on display.",
 		out_to atwood_shops,
 		e_to atwood_shops;		
@@ -146,14 +157,14 @@ Room	willy_coop "Willy St. Grocery Co-op"
 		n_to willy_east;
 
 Room	willy_west "Willy Street, west end"
-	with	description "The west end of Williamson street is where the east side of Madison ends and the downtown area begins. A tangle of memories from different decades of your life is woven into the landscape of the city here. Mother Fool's coffeeshop is on the south side of the street, radiating bohemian charm acquired from decades of service to local culture. John Nolen drives curves around the lake to the west, and the Capitol Square is northwest.",
-		s_to mother_fools,
-		in_to mother_fools,
+	with	description "The west end of Williamson street is where the east side of Madison ends and the downtown area begins. A tangle of memories from different decades of your life is woven into the landscape of the city here. Lady Wisdom's coffeeshop is on the south side of the street, radiating bohemian charm acquired from decades of service to local culture. John Nolen drives curves around the lake to the west, and the Capitol Square is northwest.",
+		s_to lady_wisdom,
+		in_to lady_wisdom,
 		e_to willy_east,
 		w_to john_nolen,
 		nw_to cap_square;
 
-Room	mother_fools "Mother Fool's Coffeeshop"
+Room	lady_wisdom "Lady Wisdom's Coffeeshop"
 	with	description "Small, funky, and redolent of the blood sweat and tears of artists trying to transform caffeine into inspiration.",
 		n_to willy_west,
 		out_to willy_west;
@@ -187,40 +198,40 @@ Room	james_madison "James Madison Park, Mendota lakeside"
 		s_to cap_square;
 
 Room	mon_cot "Monona Drive and Cottage Grove Road"
-	with	description "Traffic is heavy at the intersection of these roads. Nearby is Java Cat Cafe. Monona Drive continues to the south, Atwood Avenue is northwest, and your home is to the north.",
+	with	description "Traffic is heavy at the intersection of these roads. Nearby is Coffee Lion Cafe. Monona Drive continues to the south, Atwood Avenue is northwest, and your home is to the north.",
 		before [; go:
 			if (noun ~= s_obj) return false;
 			if (pendant has worn) return false;
 			"You need to find a talisman to wear to continue south.";
 		],
-		in_to java_cat,
-		e_to java_cat,
+		in_to coffee_lion,
+		e_to coffee_lion,
 		n_to milw_street,
 		nw_to atwood_av,
 		s_to mon_mid;
 
-Room	java_cat "Java Cat Cafe"
+Room	coffee_lion "Coffee Lion Cafe"
 	with	description "Your local cafe has been your comfort for the past several years. Days and sometimes whole weeks would go by where the only people you saw were the baristas here. You always felt accepted here, even when your disheveled appearance and stumbling arthritic gait made you feel awkward in general society. Light streams in through the tall glass windows at the front of the cafe. A display case of homemade gelato flavors is by the door. Numerous cat-themed decorations adorn the walls and counters.",
 		out_to mon_cot,
 		w_to mon_cot;
 
 Room	mon_mid "Monona Drive, by a weathered strip-mall"
 	with	description "Monona drive becomes more suburban as it heads south, but there is still character in the businesses here. A neighborhood pizzeria has recently moved into this location on the west side of the street.",
-		in_to rossis_pizza,
-		w_to rossis_pizza,
+		in_to rossinis_pizza,
+		w_to rossinis_pizza,
 		n_to mon_cot;
 
-Room	rossis_pizza "Rossi's Pizza and Vintage Arcade"
+Room	rossinis_pizza "Rossini's Pizza and Vintage Arcade"
 	with	description "Memorabilia from classic 50s, 60s, 70s, and 80s movies and tv shows covers the walls of this neighborhood pizzeria. The smell of spicy-sweet tomato sauce and brown-crisp pizza crust fills the air. A lava lamp sits on one of the tables. From the back room, you hear the alluring sound of the 8-bit sound effects of your youth.",
 		out_to mon_mid,
 		e_to mon_mid,
-		in_to rossis_arcade,
-		n_to rossis_arcade;
+		in_to rossinis_arcade,
+		n_to rossinis_arcade;
 
-Room	rossis_arcade "Rossi's Pizza, in the Vintage Arcade room"
+Room	rossinis_arcade "Rossini's Pizza, in the Vintage Arcade room"
 	with	description "A time-warped paradise. Vintage arcade cabinets surround you. The CRT displays glow with color-bleed, the sound effects are a symphonic rhapsody of buzzing lasers, and each machine is a digital poem tattooed on your heart during the 1980s. Back then, you never had enough quarters...but now, you finally do.",
-		out_to rossis_pizza,
-		s_to rossis_pizza;
+		out_to rossinis_pizza,
+		s_to rossinis_pizza;
 
 Room	etown "Northeast edge of town"
 	with	description "This is the northeast edge of town, by the shopping mall and the interstate. It is mostly lacking in the distinctive charms of the rest of the city. The usual reason for being out here is to visit the 24-hour restaurant to the north, whose sign faces the highway, glowing like a green beacon.",
@@ -244,32 +255,52 @@ Decor	house	"house" milw_street
 	with	name 'house' 'home' 'dwelling',
 			description "Your house is on the corner of the block. It is painted a light yellow and has a fenced in side yard. You have lived here for the past decade.";
 
-Decor	terminal "terminal" home
-	with	name 'terminal' 'computer' 'plan' 'plan9' 'grid' '9grid' 'system',
-			description "Your terminal glows with a Mondrian-like arrangement of pastel windows, each rio bound into a different namespace. Multiple rc shells are running, acme is open, and several irc channels are available within hubfs.";
-
 Decor	grid "grid" basement
 	with	name 'grid' 'table' 'computer' 'computers' 'cables' 'ethernet' 'webs' 'spiderwebs' 'power' 'desk' '9grid',
 			description "The physical hardware of your grid is cheap and worn. A mixture of no-name hardware and old dell minitowers, the processor speed, RAM, and storage space is all well below the current standard. The software is a different story - your Advanced Namespace Tools weave the physical boxes together into a coordinated whole. Sometimes you feel like the data within, how it is organized and flows, is like a living thing.";
 
 !============================================================================
-! The takable objects
+! The immobile objects
 
-object	wallet "wallet" home
+Prop	terminal "terminal" home
+	with	name 'terminal' 'computer' 'plan' 'plan9' 'grid' '9grid' 'system',
+			description "Your terminal glows with a Mondrian-like arrangement of pastel windows, each rio bound into a different namespace. Multiple rc shells are running, acme is open, and several irc channels are available within hubfs.";
+
+!============================================================================
+! The takeable objects
+
+object	wallet "wallet"
 	with	name 'wallet' 'money',
 			description "An old black leather wallet containing the standard mix of cash, credit cards, and random scraps of paper.";
 
-object	pendant "pendant" cosmic_delights
+object	pendant "pendant" astral_enchantments
 	with	name 'pendant' 'loonie' 'power' 'revolution',
 			description "The pendant is made from orgone plastic in the shape of a moon-face. The front is colored brownish-gold with a faint sparkle, the back is transparent and shows small pieces of stone and metal embedded within. It hangs from a black cloth cord.",
 		has clothing;
 
+!============================================================================
+! The characters
+
+Character	strawberry "Strawberry" basement
+	with	name 'strawberry' 'cat' 'kitty' 'kitten',
+			description "Your cat is small, orange with white chest and paws, female, and feisty.",
+	action_count 0,
+	each_turn [; self.action_count = self.action_count + 1;
+		switch(self.action_count) {
+		1: "Strawberry looks at you with mild curiosity.";
+		2: "Strawberry perches atop the router and studies you.";
+		3: "Strawberry deftly steps through the maze of cords and vanishes behind some boxes.";
+		4: "Strawberry's head peeks out from behind one of the grid computers.";
+		default: "Strawberry is curled up and napping in an empty cardboard box."; };
+	],
+	has	female;
 
 !============================================================================
 ! Entry point routines
 
 [ Initialise;
     location = home;
+	move wallet to player;
     lookmode = 2;
     "^^The full moon amidst clouds spills milky brightness everywhere.
 Summer is just barely over but the air is still warm and moist. Staci
