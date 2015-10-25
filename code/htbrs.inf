@@ -35,8 +35,8 @@ still.
 you made the resolution to return to Plan 9 software development.  You
 weren't trying start a revolution; you just wanted something useful to
 do with your time.  The VALISpectrum colors, the singing hippie
-housekeepers, the dock by the castle, riding Lunar Lightning to Cosmic
-Delights and visiting the Afterlife, falling in love - everything
+housekeepers, the dock by the castle, riding Lunar Lightning to Astral
+Enchantments and visiting the Afterlife, falling in love - everything
 ensued from making the binds of fiction and reality that transformed
 you into
 
@@ -55,18 +55,19 @@ Object  LibraryMessages         ! must be defined between Parser and VerbLib
 	Buy:    "You think about money and dream of transforming the economic system with Plan 9 unique digital object alternative community currencies.";
 	Climb:	"Some rise...some fall...some climb...to get to Terrapin. (Footnote 1)";
 	Dig:    "In another reality, your dog-self burrows deeply within the Earth, uncovering exactly the items needed to continue your journey. In this world, you accomplish nothing.";
+	Mild:	"And furthermore, sneep snorp sniggleworp snugwap snaduxus! (Footnote 3)";
 	Pray:   "You offer prayers to many Gods as well as the laws of physics.";
 	Sing:   "You start with a bit of Mozart's Marriage of Figaro, move on to a few of your favorite Wu-Tang verses, and conclude with a heartfelt imitation of how IU would sound singing Ripple by the Grateful Dead.";
 	Sleep:  "You drift for awhile into another realm, a tourist in one of the uncountable branches of the multiverse.";
 	Sorry:  "Rather than being caught up in apologies and regrets, you try to maintain focus on future improvement.";
-	Strong: "Say that again, and louder! Shout it! Let the world know how you feel!";
+	Strong: "Say that again, and louder! Shout it! Let the world know how you feel.";
 	Swim:   "The Madison lakes are beautiful to look at, and some people have the immune system required to cope with algae and bacteria, but you prefer to sit on the shore and watch the chromatic flickering of the ripples.";
 	Miscellany:
 		if (lm_n == 38)
 			"That action is outside the scope of this simulation.";
 		if (lm_n == 39)
 			"This game world does not provide that level of detail.";
-		];
+	];
 
 Include "verblib";
 
@@ -287,18 +288,43 @@ Character	strawberry "Strawberry" basement
 	with	name 'strawberry' 'cat' 'kitty' 'kitten',
 			description "Your cat is small, orange with white chest and paws, female, and feisty.",
 	action_count 0,
-	each_turn [; self.action_count = self.action_count + 1;
+	life [;
+		attack: "Strawberry is a battle-hardened combat kitty and springs into action. She grabs your hand with both paws, and nips lightly at your knuckles with her teeth. You pull your hand back, and she leaps up to chase it, sinking her claws into your knee. You fight back with a quick belly-tickle and she rolls onto her back, ready to deploy the full power of her back legs. You are beaten yet again. You have never defeated her.";
+		kiss: "You sneak up on Strawberry and then gather her up with a gentle swoop. She utters a slightly surprised blert, and you bring her close to your head. 'Such a good kitty!' you say as you lightly brush her forehead with your lips. She glances at you for a moment with mild outrage and wiggles from your grasp. Such a silly human! She arches her back and rubs against your shins for a moment.";
+		wakeother: "You give Strawberry a light scratch behind the ears. She yawns and stretches...and then resumes her previous position.";
+		throwat: "Strawberry chases the ", (name) noun, " and bats at it with her paw.";
+		give: "Strawberry sniffs the ", (name) noun, " but decides it is inedible and uninteresting.";
+		show: "Strawberry indicates her disinterest by choosing this moment to clean underneath her tail.";
+		tell: "Strawberry listens politely, and answers with a reassuring meow.";
+		ask: "If cats could shrug, Strawberry would answer with one.";
+		order: "Strawberry has never followed orders.";
+		answer: "Strawberry says arooooo. (Footnote 5)";
+	],
+	react_before [; 
+		pet: "Strawberry begins to purr as you stroke her, but after a few seconds, she decides that she is a fighter, not a lover. She bats at your hand with a paw, and looks up at you expecantly, hoping you will attack her.";
+		take: "Strawberry lets you hold her for about fifteen seconds before squirming free of your grasp, climbing your shoulder with help from sharp tiny claws, and hops to the floor behind you.";
+	],
+	each_turn [; 
+		if (noun == self) return false;
+		self.action_count = self.action_count + 1;
 		switch(self.action_count) {
 		1: "Strawberry looks at you with mild curiosity.";
 		2: "Strawberry perches atop the router and studies you.";
 		3: "Strawberry deftly steps through the maze of cords and vanishes behind some boxes.";
-		4: "Strawberry's head peeks out from behind one of the grid computers.";
-		5: "Strawberry meows and sharpens her claws on the carpeting of the stairway.";
-		6: "Strawberry's tail brushes by your leg as she sniffs at your toes.";
-		7: "Strawberry nimbly hops up onto the computer desk, thankfully avoiding the keyboards.";
+		4: "Strawberry nimbly hops up onto the computer desk, thankfully avoiding the keyboards.";
+		5: "Strawberry's head peeks out from behind one of the grid computers.";
+		6: "Strawberry meows and sharpens her claws on the carpeting of the stairway.";
+		7: "Strawberry's tail brushes by your leg as she sniffs at your toes.";
+
 		8: "Strawberry is standing still, tail twitching slightly.";
 		9: "Strawberry licks a paw and washes her forehead with it.";
-		default: "Strawberry is curled up and napping in an empty cardboard box."; };
+		13: if (self in basement) { move self to home; 
+					self.action_count = 6;
+					"Strawberry wakes up and wanders upstairs."; };
+				move self to basement;
+				self.action_count = 0;
+				"Strawberry yawns, stretches, and heads to the basement.";		
+		default: "Strawberry is curled up and napping in the corner."; };
 	],
 	has	female;
 
@@ -329,6 +355,14 @@ Prop	terminal "terminal" home
 	with	name 'terminal' 'computer' 'plan' 'plan9' 'grid' '9grid' 'system',
 			description "Your terminal glows with a Mondrian-like arrangement of pastel windows, each rio bound into a different namespace. Multiple rc shells are running, acme is open, and several irc channels are available within hubfs.";
 
+Prop	tempest "Tempest arcade cabinet" rossinis_arcade
+	with	name 'tempest' 'cabinet',
+			description "Your favorite game of the 1980s, Tempest is a fast moving vector graphics masterpiece of abstract action. Each screen is an outline of a three dimensional shape, and an assortment of geometric enemies approaches from the center toward the edge. The pace and feel and style of this game have never been suprassed.",
+	react_before [; play:
+		if (noun ~= self) return false;
+		"You drop a quarter in the slot and take hold of the control wheel. The game's first level is easy, and you clear it without dying, but the pace increases rapidly, and you run out of lives before finishing the first set of blue boards.";
+	];
+
 !============================================================================
 ! The takeable objects
 
@@ -345,9 +379,9 @@ object	pendant "pendant" astral_enchantments
 ! Entry point routines
 
 [ Initialise;
-    location = home;
+	location = home;
 	move wallet to player;
-    lookmode = 2;
+	lookmode = 2;
     "^^The full moon amidst clouds spills milky brightness everywhere.
 Summer is just barely over but the air is still warm and moist. Staci
 is standing on tip-toe, looking over the edge of the rooftops and
@@ -359,7 +393,6 @@ creeping across the surface as the Moon swung into the path of the
 shadow cast by Earth.  You peer upwards together, savoring the moment.
 The night air is sweet and warm, you are with someone you love...and
 the Castle is about to reopen.^^";
-
 ];
 
 !============================================================================
@@ -384,6 +417,9 @@ the Castle is about to reopen.^^";
 	switch(noun) {
 	1: "Lyrics by Robert Hunter, music by Jerry Garcia, Terrapin Station 1977.";
 	2: "There is no footnote 2.";
+	3: "Lyrics by Taylor Swift, Sneep Snorp 2012";
+	5: "Was it me? Was it you? I don't know who - but somebody said aroooooo! (Footnote 6)";
+	6: "Aroooooooooo!";
 	default: "Probably a special-case of the Navier-Stokes equations.";
 	};
 ];
@@ -396,6 +432,14 @@ the Castle is about to reopen.^^";
 
 [ Hintsub;
 	"^Once I make puzzles there will be hints.";
+];
+
+[ Petsub;
+	"You affectionately stroke the ", (name) noun, " but it doesn't reciprocate your affections.";
+];
+
+[ Playsub;
+	"Your skills don't extend so far as to be able to play the ", (name) noun;
 ];
 
 [ Releasesub;
@@ -423,5 +467,7 @@ Verb "credits" *	-> Credits;
 Verb "footnote" *	number	-> Footnote;
 Verb "help" *	-> Help;
 Verb "hint" * noun	-> Hint;
+Verb "pet" * noun	-> Pet;
+Verb "play" * noun	-> Play;
 Verb "release" * noun	-> Release;
 
