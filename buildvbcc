@@ -1,0 +1,15 @@
+#!/bin/rc
+
+rfork ne
+builddir=`{pwd}
+cd vbcc
+ape/patch -p1 <../newvbcc.patch
+mkdir bin
+ape/make all
+cd $builddir
+cp vc.config castles-1.1
+bind -ac informlibs castles-1.1
+buildlibc
+cd castles-1.1
+../vbcc/bin/vc -Ilibc/include -Ic '-module-name=permute' -c ../code/permute.c
+inform -ew $builddir/code/permutec.inf $builddir/zmachines/permute.r5
