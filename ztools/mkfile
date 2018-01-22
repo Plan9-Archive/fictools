@@ -1,4 +1,5 @@
 </sys/src/ape/config
+OS=0568qv
 all:
 	pcc -c getopt.c
 	pcc -c infinfo.c
@@ -20,7 +21,8 @@ install:
 	cp txd /$objtype/bin
 	cp pix2gif /$objtype/bin
 clean:
-	rm *.$O
+	rm -f *.[$OS] [$OS].out y.tab.? lex.yy.c y.debug y.output $TARG $CLEANFILES
 	rm infodump
 	rm txd
 	rm pix2gif
+	rm check
